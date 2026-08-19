@@ -18,6 +18,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "pnpm run build && electron .",
     "start": "electron .",
+    "smoke:host": "pnpm run build && node lib/smoke-host.js",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
