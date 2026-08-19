@@ -1,8 +1,9 @@
 /**
  * Electron main process for DSH Desktop (MVP-A).
  *
- * Owns: single-instance lock, Host child lifecycle, BrowserWindow loading the
- * loopback Web UI. Does not own agent loop, tools, or client business UI.
+ * Owns: single-instance lock, Host child lifecycle (start / restart / stop),
+ * BrowserWindow loading the loopback Web UI. Does not own agent loop, tools,
+ * or client business UI.
  * @module @deepseek-ai/dsh-desktop/main
  */
 
@@ -11,10 +12,25 @@ import path from 'node:path'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
 import { resolveRepoRoot } from './resolve-repo-root.js'
+import { HostLogRing } from './host-log-ring.js'
+import {
+  DEFAULT_HOST_RESTART_POLICY,
+  recordRestartAttempt,
+  resetRestartStreak,
+  restartBackoffMs,
+  shouldRestartHost,
+  type HostRestartPolicy,
+} from './host-restart-policy.js'
+import { resolveHostReadyTimeoutMs } from './host-ready-timeout.js'
 
 let mainWindow: BrowserWindow | null = null
 let host: RunningHost | null = null
 let starting = false
+let quitting = false
+let restartTimer: ReturnType<typeof setTimeout> | null = null
+let failedRestarts = 0
+const hostLogRing = new HostLogRing()
+const restartPolicy: HostRestartPolicy = { ...DEFAULT_HOST_RESTART_POLICY }
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -37,6 +53,9 @@ if (!gotLock) {
   })
 
   app.on('before-quit', (event) => {
+    if (quitting) return
+    quitting = true
+    clearRestartTimer()
     if (host === null) return
     event.preventDefault()
     const current = host
@@ -74,41 +93,153 @@ async function boot(): Promise<void> {
   await mainWindow.loadURL(loadingDataUrl('正在启动本地 Host…'))
 
   try {
-    const repoRoot = resolveRepoRoot()
-    const nodeCommand = resolveNodeCommand()
-    const launch = resolveHostLaunch(repoRoot, nodeCommand)
-    const dshHome = path.join(app.getPath('userData'), 'dsh-home')
-
-    host = await startHost({
-      launch,
-      env: {
-        // Isolate desktop sessions/settings from a developer's CLI DSH_HOME.
-        DSH_HOME: dshHome,
-        // Honor user proxy env inside the Host when Node supports it.
-        NODE_USE_ENV_PROXY: process.env.NODE_USE_ENV_PROXY ?? '1',
-      },
-      onLogLine: (stream, line) => {
-        // Main-process diagnostics only; never surface secrets intentionally.
-        console.log(`[host:${stream}] ${line}`)
-      },
-    })
-
-    if (mainWindow === null) {
-      await host.stop()
-      host = null
-      return
-    }
-
-    await mainWindow.loadURL(host.url)
+    await startManagedHost()
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
+    await presentHostFailure(error)
+  } finally {
+    starting = false
+  }
+}
+
+/**
+ * Spawn Host under the shared log ring and wire unexpected-exit restart.
+ */
+async function startManagedHost(): Promise<void> {
+  const repoRoot = resolveRepoRoot()
+  const nodeCommand = resolveNodeCommand()
+  const launch = resolveHostLaunch(repoRoot, nodeCommand)
+  const dshHome = path.join(app.getPath('userData'), 'dsh-home')
+  const readyTimeoutMs = resolveHostReadyTimeoutMs()
+
+  const next = await startHost({
+    launch,
+    env: {
+      // Isolate desktop sessions/settings from a developer's CLI DSH_HOME.
+      DSH_HOME: dshHome,
+      // Honor user proxy env inside the Host when Node supports it.
+      NODE_USE_ENV_PROXY: process.env.NODE_USE_ENV_PROXY ?? '1',
+    },
+    readyTimeoutMs,
+    logRing: hostLogRing,
+    onLogLine: (stream, line) => {
+      // Main-process diagnostics only; never surface secrets intentionally.
+      console.log(`[host:${stream}] ${line}`)
+    },
+    onUnexpectedExit: ({ code, signal }) => {
+      void handleHostCrash({ code, signal })
+    },
+  })
+
+  if (quitting || mainWindow === null) {
+    await next.stop()
+    return
+  }
+
+  host = next
+  await mainWindow.loadURL(next.url)
+}
+
+/**
+ * Restart Host after an unexpected post-ready exit, with capped backoff.
+ * @param info - child exit codes from the supervisor
+ */
+async function handleHostCrash(info: {
+  code: number | null
+  signal: NodeJS.Signals | null
+}): Promise<void> {
+  if (quitting) return
+
+  const allow = shouldRestartHost({
+    hadReachedReady: true,
+    stoppingIntentionally: quitting,
+    failedRestarts,
+    maxAttempts: restartPolicy.maxAttempts,
+  })
+
+  const delayMs = restartBackoffMs(failedRestarts, restartPolicy)
+  if (!allow || delayMs === null) {
+    const tail = hostLogRing.toText().slice(-4000)
+    const message = [
+      `本地 Host 在就绪后异常退出（code=${String(info.code)}, signal=${String(info.signal)}），已达重启上限。`,
+      tail.length > 0 ? `最近日志：\n${tail}` : '',
+    ]
+      .filter(part => part.length > 0)
+      .join('\n\n')
     console.error(message)
     if (mainWindow !== null) {
       await mainWindow.loadURL(loadingDataUrl(escapeHtml(message), true))
     }
-    dialog.showErrorBox('DSH Desktop 启动失败', message)
-  } finally {
-    starting = false
+    dialog.showErrorBox('DSH Desktop Host 已停止', message)
+    host = null
+    return
+  }
+
+  failedRestarts = recordRestartAttempt(failedRestarts)
+  host = null
+
+  const attemptLabel = `${String(failedRestarts)}/${String(restartPolicy.maxAttempts)}`
+  console.warn(
+    `dsh-desktop: Host crashed after ready (code=${String(info.code)}, signal=${String(info.signal)}); restart ${attemptLabel} in ${String(delayMs)}ms`,
+  )
+
+  if (mainWindow !== null) {
+    await mainWindow.loadURL(
+      loadingDataUrl(`本地 Host 已退出，正在重启（${attemptLabel}，${String(delayMs)}ms 后）…`),
+    )
+  }
+
+  clearRestartTimer()
+  restartTimer = setTimeout(() => {
+    restartTimer = null
+    void (async () => {
+      if (quitting) return
+      try {
+        await startManagedHost()
+        // Successful ready → clear the streak so a later crash gets a full budget.
+        failedRestarts = resetRestartStreak()
+      } catch (error) {
+        const delay = restartBackoffMs(failedRestarts, restartPolicy)
+        if (
+          shouldRestartHost({
+            hadReachedReady: true,
+            stoppingIntentionally: quitting,
+            failedRestarts,
+            maxAttempts: restartPolicy.maxAttempts,
+          }) &&
+          delay !== null
+        ) {
+          // Treat failed restart spawn as another crash in the streak.
+          await handleHostCrash({ code: null, signal: null })
+          return
+        }
+        await presentHostFailure(error)
+      }
+    })()
+  }, delayMs)
+}
+
+/**
+ * Surface a start/restart failure in the window and a modal dialog.
+ * @param error - thrown failure
+ */
+async function presentHostFailure(error: unknown): Promise<void> {
+  const base = error instanceof Error ? error.message : String(error)
+  const tail = hostLogRing.toText().slice(-4000)
+  const message = tail.length > 0 && !base.includes(tail) ? `${base}\n\n最近日志：\n${tail}` : base
+  console.error(message)
+  if (mainWindow !== null) {
+    await mainWindow.loadURL(loadingDataUrl(escapeHtml(message), true))
+  }
+  dialog.showErrorBox('DSH Desktop 启动失败', message)
+}
+
+/**
+ * Cancel a pending delayed restart.
+ */
+function clearRestartTimer(): void {
+  if (restartTimer !== null) {
+    clearTimeout(restartTimer)
+    restartTimer = null
   }
 }
 
