@@ -43,3 +43,36 @@ pnpm desktop
 ```sh
 pnpm --filter @deepseek-ai/dsh-desktop test
 ```
+
+## CI 发布
+
+GitHub Actions 工作流：[`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml)。
+
+### 触发条件
+
+| 事件 | 时机 |
+|---|---|
+| 推送标签 | 匹配 `desktop-v*` 的标签（例如 `desktop-v0.1.0`） |
+| 手动 | Actions → **Release (Desktop)** → **Run workflow** |
+
+### 工作流当前会做什么
+
+1. Checkout，配置 pnpm + Node 24，执行 `pnpm install --frozen-lockfile`
+2. `pnpm --filter @deepseek-ai/dsh-desktop run build`
+3. `pnpm --filter @deepseek-ai/dsh-desktop test`
+4. 将 `apps/desktop/lib/**` 与 `apps/desktop/package.json` 上传为运行产物
+
+矩阵：**windows-latest**（必过）与 **macos-latest**（在打包／签名就绪前使用 `continue-on-error`）。
+
+### 发布清单（维护者）
+
+1. 将桌面相关改动合入集成分支，并在本地确认包测试通过。
+2. 创建并推送附注标签：`git tag -a desktop-vX.Y.Z -m "desktop vX.Y.Z"`，再 `git push origin desktop-vX.Y.Z`。
+3. 打开该标签对应的 **Release (Desktop)** 运行记录；确认 Windows 为绿色（macOS 仍可能是实验性的）。
+4. 从该次运行下载上传的产物。当前仅为编译后的主进程 JS，不是面向最终用户的安装包。
+5. **TODO：** 当 `apps/desktop` 下具备 `electron-builder`（或等价）配置后，扩展工作流中的打包步骤，并在同一标签运行中发布已签名的安装包。
+
+### 当前 CI 范围之外
+
+- 完整 monorepo 的 `pnpm run build`（Host／前端；桌面包单测不依赖）
+- electron-builder 安装包、代码签名、Apple 公证、自动更新通道

@@ -1,0 +1,119 @@
+# Build and test DSH Desktop artifacts for tagged desktop releases.
+#
+# Triggers on desktop-v* tags and manual workflow_dispatch. Produces the
+# compiled Electron main-process output under apps/desktop/lib. Full OS
+# installers (electron-builder / notarization / code signing) are not wired
+# yet — see TODO markers below and apps/desktop/README.md.
+name: Release (Desktop)
+
+'on':
+  push:
+    tags:
+      - 'desktop-v*'
+  workflow_dispatch:
+    inputs:
+      ref_note:
+        description: Optional note recorded in the run summary (does not change the checked-out ref)
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PRIMARY_NODE_VERSION: '24'
+  # CI runs must never report to the production telemetry endpoint.
+  DSH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  desktop:
+    name: desktop / ${{ matrix.os }}
+    # macOS is best-effort until installer packaging and Apple signing land.
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            experimental: false
+          - os: macos-latest
+            experimental: true
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.PRIMARY_NODE_VERSION }}
+
+      # Windows runners use native pwsh per .github/AGENTS.md.
+      - name: Configure pnpm store path (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $storeRoot = Join-Path $env:LOCALAPPDATA 'pnpm\store'
+          Add-Content -Path $env:GITHUB_ENV -Value "PNPM_CONFIG_STORE_DIR=$storeRoot"
+          $storePath = & pnpm store path --silent
+          Add-Content -Path $env:GITHUB_ENV -Value "DSH_PNPM_STORE_PATH=$storePath"
+
+      - name: Configure pnpm store path (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          store_root="$HOME/.local/share/pnpm/store"
+          echo "PNPM_CONFIG_STORE_DIR=$store_root" >> "$GITHUB_ENV"
+          store_path=$(PNPM_CONFIG_STORE_DIR="$store_root" pnpm store path --silent)
+          echo "DSH_PNPM_STORE_PATH=$store_path" >> "$GITHUB_ENV"
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.DSH_PNPM_STORE_PATH }}
+          key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
+
+      - name: Install (immutable)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build desktop package
+        run: pnpm --filter @deepseek-ai/dsh-desktop run build
+
+      - name: Test desktop package
+        run: pnpm --filter @deepseek-ai/dsh-desktop test
+
+      # TODO(desktop-installer): When electron-builder (or equivalent) config lands
+      # under apps/desktop, add a packaging step here, e.g.:
+      #   pnpm --filter @deepseek-ai/dsh-desktop run dist
+      # and upload the installer outputs (NSIS/DMG/etc.) instead of — or in
+      # addition to — the raw lib/ tree. Wire code signing / notarization secrets
+      # only after the packaging config and release checklist exist.
+      - name: Record packaging status
+        shell: bash
+        run: |
+          echo "No electron-builder (or equivalent) packaging config in apps/desktop yet."
+          echo "Uploading compiled main-process output (apps/desktop/lib) only."
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.ref_note }}" ]; then
+            echo "Dispatch note: ${{ inputs.ref_note }}"
+          fi
+
+      - name: Upload desktop build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-desktop-${{ matrix.os }}-${{ github.ref_name }}
+          path: |
+            apps/desktop/lib/**
+            apps/desktop/package.json
+          if-no-files-found: error
+          retention-days: 14

@@ -43,3 +43,36 @@ pnpm desktop
 ```sh
 pnpm --filter @deepseek-ai/dsh-desktop test
 ```
+
+## CI release
+
+GitHub Actions workflow: [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml).
+
+### Triggers
+
+| Event | When |
+|---|---|
+| Tag push | Tags matching `desktop-v*` (for example `desktop-v0.1.0`) |
+| Manual | Actions → **Release (Desktop)** → **Run workflow** |
+
+### What the workflow does today
+
+1. Checkout, set up pnpm + Node 24, `pnpm install --frozen-lockfile`
+2. `pnpm --filter @deepseek-ai/dsh-desktop run build`
+3. `pnpm --filter @deepseek-ai/dsh-desktop test`
+4. Upload `apps/desktop/lib/**` and `apps/desktop/package.json` as run artifacts
+
+Matrix: **windows-latest** (required) and **macos-latest** (`continue-on-error` until packaging/signing is ready).
+
+### Release checklist (maintainers)
+
+1. Land desktop changes on the integration branch and confirm package tests pass locally.
+2. Create and push an annotated tag: `git tag -a desktop-vX.Y.Z -m "desktop vX.Y.Z"` then `git push origin desktop-vX.Y.Z`.
+3. Open the **Release (Desktop)** workflow run for that tag; confirm Windows is green (macOS may still be experimental).
+4. Download the uploaded artifacts from the run. Today these are compiled main-process JS only — not an end-user installer.
+5. **TODO:** when `electron-builder` (or equivalent) config exists under `apps/desktop`, extend the workflow packaging step and publish signed installers from the same tag run.
+
+### Out of scope for CI today
+
+- Full monorepo `pnpm run build` of Host/frontend (desktop unit tests do not require it)
+- electron-builder installers, code signing, Apple notarization, auto-update feeds
