@@ -1,9 +1,10 @@
-/**
+﻿/**
  * Electron main process for DSH Desktop (MVP-A).
  *
  * Owns: single-instance lock, Host child lifecycle (start / restart / stop),
- * BrowserWindow loading the loopback Web UI. Does not own agent loop, tools,
- * or client business UI.
+ * BrowserWindow loading the loopback Web UI, branded shell status pages, a
+ * one-time first-run strip, secure preload shell bridge, and auto-update
+ * skeleton. Does not own agent loop, tools, or client business UI.
  * @module @deepseek-ai/dsh-desktop/main
  */
 
@@ -28,6 +29,16 @@ import {
 } from './host-restart-policy.js'
 import { resolveHostReadyTimeoutMs } from './host-ready-timeout.js'
 import { registerShellBridgeHandlers } from './shell-bridge.js'
+import {
+  isFirstLaunch,
+  markFirstLaunchCompleted,
+} from './first-run-state.js'
+import {
+  buildFirstRunWelcomeScript,
+  buildShellPageDataUrl,
+  classifyHostStartError,
+  SHELL_RETRY_URL,
+} from './shell-pages.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -45,6 +56,9 @@ const hostLogRing = new HostLogRing()
 const restartPolicy: HostRestartPolicy = { ...DEFAULT_HOST_RESTART_POLICY }
 /** Auto-update controller; retained for a future menu "Check for updates" action. */
 let autoUpdate: AutoUpdateController | null = null
+/** Whether the current profile has not yet completed a successful Host load. */
+let pendingFirstRunWelcome = false
+let shellHandlersBound = false
 
 /**
  * Manual-check / install-consent entry point for a future app menu.
@@ -90,11 +104,58 @@ if (!gotLock) {
 }
 
 /**
- * Create the shell window, start Host, navigate to the readiness URL.
+ * Create the shell window (once), start Host, navigate to the readiness URL.
  */
 async function boot(): Promise<void> {
   if (starting) return
   starting = true
+
+  const userDataPath = app.getPath('userData')
+  pendingFirstRunWelcome = isFirstLaunch(userDataPath)
+
+  ensureMainWindow()
+
+  // Skeleton: check on start when packaged; manual check via controller later.
+  // Never auto-downloads or silent-installs without consent (see auto-update.ts).
+  if (autoUpdate === null) {
+    autoUpdate = setupAutoUpdate({
+      getMainWindow: () => mainWindow,
+      onStateChange: (state) => {
+        console.log(
+          `[auto-update] phase=${state.phase}` +
+            (state.availableVersion !== null ? ` available=${state.availableVersion}` : '') +
+            (state.errorMessage !== null ? ` error=${state.errorMessage}` : ''),
+        )
+      },
+    })
+  }
+
+  if (mainWindow === null) {
+    starting = false
+    return
+  }
+
+  await mainWindow.loadURL(
+    buildShellPageDataUrl({
+      kind: 'loading',
+      isFirstLaunch: pendingFirstRunWelcome,
+    }),
+  )
+
+  try {
+    await startManagedHost()
+  } catch (error) {
+    await presentHostFailure(error)
+  } finally {
+    starting = false
+  }
+}
+
+/**
+ * Ensure the BrowserWindow exists and shell navigation handlers are bound once.
+ */
+function ensureMainWindow(): void {
+  if (mainWindow !== null) return
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -112,29 +173,24 @@ async function boot(): Promise<void> {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+    shellHandlersBound = false
   })
 
-  // Skeleton: check on start when packaged; manual check via controller later.
-  // Never auto-downloads or silent-installs without consent (see auto-update.ts).
-  autoUpdate = setupAutoUpdate({
-    getMainWindow: () => mainWindow,
-    onStateChange: (state) => {
-      console.log(
-        `[auto-update] phase=${state.phase}` +
-          (state.availableVersion !== null ? ` available=${state.availableVersion}` : '') +
-          (state.errorMessage !== null ? ` error=${state.errorMessage}` : ''),
-      )
-    },
-  })
+  if (!shellHandlersBound) {
+    shellHandlersBound = true
+    // Retry from branded error pages (data: URL → custom scheme).
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      if (url !== SHELL_RETRY_URL) return
+      event.preventDefault()
+      void retryBoot()
+    })
 
-  await mainWindow.loadURL(loadingDataUrl('正在启动本地 Host…'))
-
-  try {
-    await startManagedHost()
-  } catch (error) {
-    await presentHostFailure(error)
-  } finally {
-    starting = false
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      if (url === SHELL_RETRY_URL) {
+        void retryBoot()
+      }
+      return { action: 'deny' }
+    })
   }
 }
 
@@ -142,10 +198,18 @@ async function boot(): Promise<void> {
  * Spawn Host under the shared log ring and wire unexpected-exit restart.
  */
 async function startManagedHost(): Promise<void> {
+  const userDataPath = app.getPath('userData')
+  // Stop a previous Host before relaunch (retry path).
+  if (host !== null) {
+    const previous = host
+    host = null
+    await previous.stop()
+  }
+
   const repoRoot = resolveRepoRoot()
   const nodeCommand = resolveNodeCommand()
   const launch = resolveHostLaunch(repoRoot, nodeCommand)
-  const dshHome = path.join(app.getPath('userData'), 'dsh-home')
+  const dshHome = path.join(userDataPath, 'dsh-home')
   const readyTimeoutMs = resolveHostReadyTimeoutMs()
 
   const next = await startHost({
@@ -174,6 +238,20 @@ async function startManagedHost(): Promise<void> {
 
   host = next
   await mainWindow.loadURL(next.url)
+
+  if (pendingFirstRunWelcome && mainWindow !== null) {
+    try {
+      await mainWindow.webContents.executeJavaScript(buildFirstRunWelcomeScript(), true)
+      markFirstLaunchCompleted(userDataPath)
+      pendingFirstRunWelcome = false
+    } catch (error) {
+      // Welcome strip is non-blocking; keep first-run flag so a later boot can retry.
+      console.warn(
+        'dsh-desktop: first-run welcome strip failed',
+        error instanceof Error ? error.message : error,
+      )
+    }
+  }
 }
 
 /**
@@ -204,7 +282,13 @@ async function handleHostCrash(info: {
       .join('\n\n')
     console.error(message)
     if (mainWindow !== null) {
-      await mainWindow.loadURL(loadingDataUrl(escapeHtml(message), true))
+      await mainWindow.loadURL(
+        buildShellPageDataUrl({
+          kind: 'failure',
+          detail: message,
+          showRetry: true,
+        }),
+      )
     }
     dialog.showErrorBox('DSH Desktop Host 已停止', message)
     host = null
@@ -221,7 +305,10 @@ async function handleHostCrash(info: {
 
   if (mainWindow !== null) {
     await mainWindow.loadURL(
-      loadingDataUrl(`本地 Host 已退出，正在重启（${attemptLabel}，${String(delayMs)}ms 后）…`),
+      buildShellPageDataUrl({
+        kind: 'loading',
+        detail: `本地 Host 已退出，正在重启（${attemptLabel}，${String(delayMs)}ms 后）…`,
+      }),
     )
   }
 
@@ -263,11 +350,36 @@ async function presentHostFailure(error: unknown): Promise<void> {
   const base = error instanceof Error ? error.message : String(error)
   const tail = hostLogRing.toText().slice(-4000)
   const message = tail.length > 0 && !base.includes(tail) ? `${base}\n\n最近日志：\n${tail}` : base
+  const kind = classifyHostStartError(message)
   console.error(message)
   if (mainWindow !== null) {
-    await mainWindow.loadURL(loadingDataUrl(escapeHtml(message), true))
+    await mainWindow.loadURL(
+      buildShellPageDataUrl({
+        kind,
+        detail: message,
+        showRetry: true,
+      }),
+    )
   }
-  dialog.showErrorBox('DSH Desktop 启动失败', message)
+  dialog.showErrorBox(kindTitle(kind), message)
+}
+
+/**
+ * Stop any in-flight start and re-run {@link boot} from an error page retry.
+ */
+async function retryBoot(): Promise<void> {
+  if (starting || quitting) return
+  clearRestartTimer()
+  failedRestarts = resetRestartStreak()
+  await boot()
+}
+
+/**
+ * Dialog title for a classified host failure.
+ * @param kind - timeout or generic failure
+ */
+function kindTitle(kind: 'timeout' | 'failure'): string {
+  return kind === 'timeout' ? 'DSH Desktop 启动超时' : 'DSH Desktop 启动失败'
 }
 
 /**
@@ -278,39 +390,4 @@ function clearRestartTimer(): void {
     clearTimeout(restartTimer)
     restartTimer = null
   }
-}
-
-/**
- * Minimal status page shown before the Host URL is known (or on failure).
- * @param message - status or error text
- * @param isError - style as error when true
- */
-function loadingDataUrl(message: string, isError = false): string {
-  const color = isError ? '#b91c1c' : '#0f172a'
-  const html = `<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <title>DSH Desktop</title>
-  <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: ${color}; }
-    main { min-height: 100%; display: grid; place-items: center; padding: 2rem; box-sizing: border-box; }
-    pre { white-space: pre-wrap; word-break: break-word; max-width: 48rem; line-height: 1.5; }
-  </style>
-</head>
-<body><main><pre>${message}</pre></main></body>
-</html>`
-  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
-}
-
-/**
- * Escape text embedded into the loading HTML.
- * @param value - raw message
- */
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
 }

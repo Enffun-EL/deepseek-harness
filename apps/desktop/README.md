@@ -73,6 +73,14 @@ Code signing and notarization are **not** configured in this skeleton. Unsigned 
 
 Pure helpers (version compare, feed URL builder, update state machine) are unit-tested without launching Electron.
 
+## First-run and shell status UX
+
+While the local Host starts, the main process shows a branded Chinese **loading** page (data URL). On Host **failure** or **readiness timeout**, it shows a matching error page with a **Retry** control that re-runs boot (stops any prior child, then starts Host again). Pages are built by pure helpers in `src/shell-pages.ts` (unit-tested; no `nodeIntegration`).
+
+On the first successful Host UI load for a profile, the shell injects a short **welcome status strip** at the top of the Web UI. The strip does not block interaction and auto-dismisses. Completion is stored as `hasCompletedFirstLaunch` in `desktop-shell-state.json` under Electron `userData`. Later launches skip the strip. Corrupt or missing state is treated as not completed.
+
+Security invariants for the shell window stay fixed: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
+
 ## Layout
 
 | Path | Role |
@@ -83,6 +91,10 @@ Pure helpers (version compare, feed URL builder, update state machine) are unit-
 | `src/update-policy.ts` | When to check on start (pure) |
 | `src/update-state.ts` | Update lifecycle state machine (pure) |
 | `src/version-compare.ts` | Version ordering helper (pure) |
+
+| `src/main.ts` | Electron main: window, single-instance, quit → stop Host, first-run strip |
+| `src/shell-pages.ts` | Pure HTML builders for loading / timeout / failure pages |
+| `src/first-run-state.ts` | Read/write `hasCompletedFirstLaunch` under userData |
 | `src/host-supervisor.ts` | Spawn Host, parse readiness URL, stop child |
 | `src/host-launcher.ts` | Resolve built vs source `dsh` launch argv |
 | `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
