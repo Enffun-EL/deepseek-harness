@@ -206,6 +206,7 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/host-launcher.ts` | 解析构建产物／源码两种 `dsh` 启动参数 |
 | `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
 | `src/preload.ts` | 沙箱 preload，暴露 `window.dshDesktop` 壳层 API |
+| `src/ipc-channels.json` | IPC 通道名单一来源；main 以 ESM 导入，preload 打包内联以适配 `sandbox: true` |
 | `src/shell-bridge.ts` | preload 桥的主进程 IPC 处理 |
 | `src/external-url.ts` | `openExternal` 的 http(s) + 可选主机白名单 |
 | `src/shell-pages.ts` | 品牌化加载／错误页 HTML；首次欢迎脚本；`describeHostLaunchError` |

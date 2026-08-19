@@ -206,6 +206,7 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/host-launcher.ts` | Resolve built vs source `dsh` launch argv |
 | `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
 | `src/preload.ts` | Sandboxed preload exposing `window.dshDesktop` shell chrome API |
+| `src/ipc-channels.json` | Single source of IPC channel names; main imports ESM, preload bundle inlines for `sandbox: true` |
 | `src/shell-bridge.ts` | Main-process IPC handlers for the preload bridge |
 | `src/external-url.ts` | http(s) + optional host allowlist for `openExternal` |
 | `src/shell-pages.ts` | Branded loading/error HTML; first-run script; `describeHostLaunchError` |

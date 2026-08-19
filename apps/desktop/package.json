@@ -16,7 +16,7 @@
     "directory": "apps/desktop"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node --input-type=module -e \"import { copyFileSync } from 'node:fs'; copyFileSync('src/dsh-desktop.d.ts', 'lib/dsh-desktop.d.ts')\"",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json --noEmit && node scripts/build-preload.mjs && node --input-type=module -e \"import { copyFileSync } from 'node:fs'; copyFileSync('src/dsh-desktop.d.ts', 'lib/dsh-desktop.d.ts'); copyFileSync('src/ipc-channels.json', 'lib/ipc-channels.json')\"",
     "dev": "pnpm run build && electron .",
     "start": "electron .",
     "smoke:host": "pnpm run build && node lib/smoke-host.js",
@@ -35,8 +35,9 @@
   },
   "devDependencies": {
     "electron": "^37.2.0",
+    "electron-builder": "^24.13.3",
+    "esbuild": "0.25.12",
     "typescript": "~5.9.2",
-    "vitest": "^3.2.4",
-    "electron-builder": "^24.13.3"
+    "vitest": "^3.2.4"
   }
 }

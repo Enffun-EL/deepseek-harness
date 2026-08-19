@@ -1,0 +1,4 @@
+{
+  "IPC_GET_SHELL_INFO": "dsh-desktop:get-shell-info",
+  "IPC_OPEN_EXTERNAL": "dsh-desktop:open-external"
+}

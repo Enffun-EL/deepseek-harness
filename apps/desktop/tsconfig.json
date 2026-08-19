@@ -9,8 +9,9 @@
     "skipLibCheck": true,
     "declaration": true,
     "sourceMap": true,
+    "resolveJsonModule": true,
     "types": ["node", "electron"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.json"],
   "exclude": ["src/preload.ts"]
 }

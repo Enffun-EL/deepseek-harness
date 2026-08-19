@@ -1,13 +1,18 @@
 /**
  * Shared IPC channel names and payload types for the desktop shell bridge.
- * Safe to import from both main and the sandboxed preload (no main-only APIs).
+ *
+ * Channel string literals live in `ipc-channels.json` so the sandboxed CJS
+ * preload and the ESM main process share one source (preload cannot import
+ * this ESM module under `sandbox: true`).
  */
 
+import channelNames from './ipc-channels.json' with { type: 'json' }
+
 /** IPC channel: renderer asks for shell version/platform. */
-export const IPC_GET_SHELL_INFO = 'dsh-desktop:get-shell-info' as const
+export const IPC_GET_SHELL_INFO = channelNames.IPC_GET_SHELL_INFO
 
 /** IPC channel: renderer asks to open a URL in the system browser. */
-export const IPC_OPEN_EXTERNAL = 'dsh-desktop:open-external' as const
+export const IPC_OPEN_EXTERNAL = channelNames.IPC_OPEN_EXTERNAL
 
 /** Payload returned by {@link IPC_GET_SHELL_INFO}. */
 export interface DshDesktopShellInfo {
