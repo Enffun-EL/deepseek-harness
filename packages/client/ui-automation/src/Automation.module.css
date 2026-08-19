@@ -1,0 +1,235 @@
+/* Automation page atoms. Tokens only — theme ownership stays in ui-theme. */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 500;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cta {
+  padding: 8px 14px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  font-size: 13px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.cta:hover {
+  background: var(--dsw-alias-button-primary-hover);
+}
+
+.cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ctaSecondary {
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+}
+
+.ctaSecondary:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.keepAwake {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.keepAwakeLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+.keepAwakeSwitch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-layer-1));
+  cursor: pointer;
+  padding: 0;
+}
+
+.keepAwakeSwitch[data-on='true'] {
+  background: var(--dsw-alias-button-primary-fill);
+  border-color: transparent;
+}
+
+.keepAwakeSwitch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keepAwakeThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-primary-foreground, #fff);
+  transition: transform 120ms ease;
+}
+
+.keepAwakeSwitch[data-on='true'] .keepAwakeThumb {
+  transform: translateX(18px);
+}
+
+.keepAwakeHint {
+  margin: 0;
+  flex: 1 1 180px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 16px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 14px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.emptyBody {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.templateGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.templateGrid > * {
+  min-width: 0;
+}
+
+.templateCard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.templateCard:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.templateCard:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.templateTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.templateDescription {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.emptyHint {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}
