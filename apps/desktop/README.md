@@ -200,6 +200,7 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/external-url.ts` | http(s)-only allowlist for `openExternal` |
 | `src/resolve-repo-root.ts` | Locate monorepo root from the packaged path |
 | `src/smoke-host.ts` | Headless Host readiness smoke (no Electron GUI) |
+| `src/smoke-electron.ts` | Electron binary presence/`--version` smoke (no window) |
 
 ## Headless Host smoke
 
@@ -219,7 +220,17 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 
 The script builds this package, starts Host the same way Electron main does (`resolveRepoRoot` + `resolveHostLaunch` + `startHost`), waits for the `dsh web:` readiness URL, `GET`s that URL (expects HTTP 200), stops Host, and exits `0` on success or `1` on failure. A temporary `DSH_HOME` under the OS temp directory keeps smoke state off the developer CLI home.
 
-For a production-like Host (built CLI + web frontend), run `pnpm run build` at the repository root first. Without built artifacts the smoke falls back to the source CLI via `tsx` (same as desktop dev).
+For a production-like Host (built CLI + web frontend), run `pnpm run build` at the repository root first. Without built artifacts the smoke falls back to the source CLI via `tsx` (same as desktop dev). CI gates use that source fallback so they do not require a full monorepo build.
+
+## Electron binary smoke
+
+Confirms the `electron` package binary is on disk and answers `--version`. Does not open a window or start Host.
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
+```
+
+Exit codes: `0` success, `1` binary present but failed, `2` binary missing (typical postinstall download gap). CI soft-fails only exit `2`; a broken binary still fails the job.
 
 ## Out of scope (this package)
 
@@ -228,41 +239,63 @@ For a production-like Host (built CLI + web frontend), run `pnpm run build` at t
 - Business UI (lives under `packages/client/*`)
 - IDE editor, cloud multi-tenant, VS Code extension
 
-## CI release
+## CI
 
-GitHub Actions workflow: [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml).
+Two workflows cover desktop:
 
-### Triggers
+| Workflow | File | Role |
+|---|---|---|
+| **Desktop Smoke** | [`.github/workflows/desktop-smoke.yml`](../../.github/workflows/desktop-smoke.yml) | PR/push path-filtered gate |
+| **Release (Desktop)** | [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml) | Tag / manual release build + same gates + artifact upload |
+
+### Desktop Smoke (PR / master)
+
+**Triggers:** pull requests and pushes to `master` that touch `apps/desktop/**`, the desktop workflow files, or workspace lockfiles; also **workflow_dispatch**.
+
+**Matrix:** **windows-latest** and **ubuntu-latest** (required), **macos-latest** (`continue-on-error`).
+
+**Steps:**
+
+1. Checkout, set up pnpm + Node 24, `pnpm install --frozen-lockfile`
+2. `pnpm --filter @deepseek-ai/dsh-desktop run build`
+3. `pnpm --filter @deepseek-ai/dsh-desktop test`
+4. `pnpm --filter @deepseek-ai/dsh-desktop run smoke:host` (source CLI via `tsx` when `apps/cli/lib` is absent)
+5. `pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron` (soft-fail only when exit code is `2` / binary missing)
+
+### Release (Desktop)
+
+**Triggers:**
 
 | Event | When |
 |---|---|
 | Tag push | Tags matching `desktop-v*` (for example `desktop-v0.1.0`) |
 | Manual | Actions → **Release (Desktop)** → **Run workflow** |
 
-### What the workflow does today
+**What the workflow does today:**
 
-1. Checkout, set up pnpm + Node 24, `pnpm install --frozen-lockfile`
-2. `pnpm --filter @deepseek-ai/dsh-desktop run build`
-3. `pnpm --filter @deepseek-ai/dsh-desktop test`
-4. Upload `apps/desktop/lib/**` and `apps/desktop/package.json` as run artifacts
+1. Same install / build / unit test / `smoke:host` / `smoke:electron` sequence as Desktop Smoke
+2. Upload `apps/desktop/lib/**` and `apps/desktop/package.json` as run artifacts
 
 Matrix: **windows-latest** (required) and **macos-latest** (`continue-on-error` until packaging/signing is ready).
 
 ### Release checklist (maintainers)
 
-1. Land desktop changes on the integration branch and confirm package tests pass locally.
+1. Land desktop changes on the integration branch; confirm **Desktop Smoke** (or local unit + smokes) is green.
 2. Create and push an annotated tag: `git tag -a desktop-vX.Y.Z -m "desktop vX.Y.Z"` then `git push origin desktop-vX.Y.Z`.
 3. Open the **Release (Desktop)** workflow run for that tag; confirm Windows is green (macOS may still be experimental).
 4. Download the uploaded artifacts from the run. Today these are compiled main-process JS only — not an end-user installer.
-5. **TODO:** when `electron-builder` (or equivalent) config exists under `apps/desktop`, extend the workflow packaging step and publish signed installers from the same tag run.
+5. **TODO:** extend the release workflow packaging step to run `electron-builder` and publish signed installers from the same tag run.
 
 ### Out of scope for CI today
 
-- Full monorepo `pnpm run build` of Host/frontend (desktop unit tests do not require it)
-- electron-builder installers, code signing, Apple notarization, auto-update feeds
+- Full monorepo `pnpm run build` of Host/frontend on every desktop gate (Host smoke uses the source CLI fallback)
+- Required electron-builder installer artifacts, code signing, Apple notarization, auto-update feeds
+- Full Electron GUI / BrowserWindow integration tests
 
 ```sh
 pnpm --filter @deepseek-ai/dsh-desktop test
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
 ```
 
-Unit tests cover pure launch/URL helpers only. Host readiness is a manual (or CI-optional) smoke via `smoke:host` / `desktop:smoke`.
+Unit tests cover pure launch/URL helpers. Host readiness and Electron binary presence are gated in CI via `smoke:host` and `smoke:electron`.
