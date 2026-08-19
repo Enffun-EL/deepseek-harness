@@ -17,11 +17,14 @@ export interface ResolveHostRootOptions {
 }
 
 /**
- * True when `dir` looks like a Host / monorepo leaf the shell can target.
+ * True when `dir` can supply a Host launch path (run-host.mjs, CLI bin, or monorepo leaf).
  * Prefer {@link hasBuiltCliBin} when choosing among several candidates.
  * @param dir - candidate Host root
  */
 export function isHostRoot(dir: string): boolean {
+  // Staged host-dist / resources/host (ensure-host-dist writes run-host.mjs).
+  if (existsSync(path.join(dir, 'run-host.mjs'))) return true
+
   const cliDir = path.join(dir, 'apps', 'cli')
   if (!existsSync(cliDir)) return false
   if (existsSync(path.join(cliDir, 'lib', 'bin.js'))) return true

@@ -60,6 +60,7 @@ export interface HostLaunchErrorDescription {
  */
 export function classifyHostStartError(message: string): Exclude<ShellPageKind, 'loading'> {
   if (/timed out/i.test(message)) return 'timeout'
+  // Missing system Node is still a failure page; detail copy comes from formatHostStartErrorDetail.
   return 'failure'
 }
 

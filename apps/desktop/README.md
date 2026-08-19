@@ -120,20 +120,33 @@ Artifacts land in `apps/desktop/release/` (gitignored). macOS DMG production on 
 
 ### How the packaged app finds Host
 
-The shell does **not** embed a full monorepo Host bundle in MVP packaging. At runtime `resolveHostRoot` picks the first match:
+At runtime `resolveHostRoot` picks the first match:
 
-1. **`DSH_DESKTOP_HOST_ROOT`** — absolute path to a Host root that contains `apps/cli` (built `lib/bin.js` and/or source `src/bin.ts`).
-2. **`resources/host`** — optional tree copied from `apps/desktop/host-dist` via electron-builder `extraResources` (present only when you populate `host-dist` before pack).
+1. **`DSH_DESKTOP_HOST_ROOT`** — absolute path to a Host root (`run-host.mjs`, or `apps/cli` with built `lib/bin.js` and/or source `src/bin.ts`).
+2. **`resources/host`** — tree copied from `apps/desktop/host-dist` via electron-builder `extraResources`.
 3. **Monorepo walk** — parent directories with `pnpm-workspace.yaml` + `apps/cli` (developer checkouts / `pnpm desktop`).
 
-`pnpm run ensure-host-dist` (invoked by `pack` / `dist`) creates a placeholder `host-dist/` so electron-builder's `extraResources` source path exists. That placeholder is **not** a runnable Host. For a self-contained installer, place a prepared Host layout under `apps/desktop/host-dist/` (at least `apps/cli/lib/bin.js` plus the runtime closure the CLI needs) before `dist`, or document that end users must set `DSH_DESKTOP_HOST_ROOT` to an installed monorepo/CLI tree.
+`pnpm run ensure-host-dist` (invoked by `pack` / `dist`) stages `host-dist/` from monorepo artifacts when they exist:
 
-System `node` remains required to spawn Host; Electron's `process.execPath` is never used as the Node binary.
+| Staged when present | Role |
+|---|---|
+| `apps/cli/lib/**` (+ `package.json`, `config/**`) | Built CLI entry and chunks |
+| `apps/web/dist/**` | Web SPA static files (when built) |
+| `run-host.mjs` | Packaged launcher: system Node → monorepo bridge or staged bin |
+| `host-manifest.json` | Mode, pack-time monorepo path, residual notes |
+
+**Same-machine bridge:** when the pack-time monorepo path in `host-manifest.json` still has `apps/cli/lib/bin.js`, `run-host.mjs` re-invokes that checkout (typical for local `pack` / developer installers). That is monorepo-aware packaging, not a fully offline Host.
+
+**Not bundled (this MVP):** portable Node.js binary; full monorepo `node_modules` / pnpm store. Without the monorepo bridge, the staged CLI bin alone cannot resolve workspace packages.
+
+**System Node is still required** (`^22.19` or `>=24` on PATH, or `NODE` / `npm_node_execpath`). Electron's `process.execPath` is never used as the Node binary. If Node is missing, the shell surfaces a clear Chinese error via `formatHostStartErrorDetail`.
+
+When monorepo CLI artifacts are missing at pack time, `ensure-host-dist` still writes a placeholder so electron-builder's source path exists; that placeholder is **not** runnable — run `pnpm run build` then re-run `ensure-host-dist`, or set `DSH_DESKTOP_HOST_ROOT`.
 
 ### Limitations (current MVP)
 
-- Full Host + frontend vendoring into the installer is **deferred**; shell-only artifacts start only when a Host root is discoverable as above.
-- Code signing, notarization, and auto-update are out of scope here.
+- Full offline Host (vendored runtime + portable Node) is **deferred**; packaged apps boot when a Host root is discoverable and system Node is available as above.
+- Code signing, notarization, and auto-update feed publishing are release-pipeline concerns.
 - Cross-building every target on one OS is not guaranteed; prefer native CI runners per platform.
 
 ## Layout
@@ -154,11 +167,13 @@ System `node` remains required to spawn Host; Electron's `process.execPath` is n
 | `src/shell-pages.ts` | Pure HTML builders for loading / timeout / failure pages |
 | `src/first-run-state.ts` | Read/write `hasCompletedFirstLaunch` under userData |
 | `src/host-supervisor.ts` | Spawn Host, parse readiness URL, stop child |
-| `src/host-launcher.ts` | Resolve built vs source `dsh` launch argv |
+| `src/host-launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
+| `src/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
 | `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
 | `src/resolve-host-root.ts` | Host root: env, packaged `resources/host`, monorepo walk |
 | `electron-builder.yml` | Windows / macOS / Linux pack targets |
-| `scripts/ensure-host-dist.mjs` | Ensure `host-dist/` exists before electron-builder |
+| `scripts/ensure-host-dist.mjs` | Stage `host-dist/` (artifacts or placeholder) before electron-builder |
+| `scripts/stage-host-dist-lib.mjs` | Staging helpers + `run-host.mjs` template (unit-tested) |
 
 ## Out of scope (this package)
 
@@ -192,7 +207,7 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 - `openExternal` (preload → main) allows **absolute http(s) only** by default (any host). Non-http(s) schemes (`file:`, `javascript:`, `data:`, …) are always rejected. Set `DSH_DESKTOP_OPEN_EXTERNAL_HOSTS` to a comma-separated hostname list to restrict opens to those hosts **plus localhost** (`localhost`, `127.0.0.1`, `::1`, `*.localhost`).
 - Host logs are main-process diagnostics; do not intentionally surface secrets in the window.
 - Closing the app stops the Host child so the loopback port does not outlive the product window.
-- Packaged installers must ship a Host layout later; a monorepo-only launch still needs system `node` and repository layout.
+- Packaged installers stage Host artifacts via `ensure-host-dist` (same-machine monorepo bridge preferred); system `node` is still required.
 
 ## Layout
 
@@ -203,7 +218,8 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/host-restart-policy.ts` | Pure restart/backoff policy |
 | `src/host-log-ring.ts` | Bounded Host log ring for crash context |
 | `src/host-ready-timeout.ts` | `DSH_DESKTOP_HOST_READY_MS` resolution |
-| `src/host-launcher.ts` | Resolve built vs source `dsh` launch argv |
+| `src/host-launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
+| `src/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
 | `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
 | `src/preload.ts` | Sandboxed preload exposing `window.dshDesktop` shell chrome API |
 | `src/ipc-channels.json` | Single source of IPC channel names; main imports ESM, preload bundle inlines for `sandbox: true` |

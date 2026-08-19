@@ -120,20 +120,33 @@ pnpm --filter @deepseek-ai/dsh-desktop run dist:linux
 
 ### 打包后的应用如何找到 Host
 
-MVP 打包**不会**把完整 monorepo Host 打进安装包。运行时 `resolveHostRoot` 按下列顺序取第一个命中项：
+运行时 `resolveHostRoot` 按下列顺序取第一个命中项：
 
-1. **`DSH_DESKTOP_HOST_ROOT`** — 指向含 `apps/cli` 的 Host 根目录（已构建 `lib/bin.js` 和／或源码 `src/bin.ts`）。
-2. **`resources/host`** — 可选树，由 electron-builder `extraResources` 从 `apps/desktop/host-dist` 拷入（仅在 pack 前填充 `host-dist` 时存在）。
+1. **`DSH_DESKTOP_HOST_ROOT`** — 指向 Host 根（含 `run-host.mjs`，或含已构建 `lib/bin.js` 和／或源码 `src/bin.ts` 的 `apps/cli`）。
+2. **`resources/host`** — 由 electron-builder `extraResources` 从 `apps/desktop/host-dist` 拷入的树。
 3. **Monorepo 上溯** — 带 `pnpm-workspace.yaml` 与 `apps/cli` 的父目录（开发检出 / `pnpm desktop`）。
 
-`pnpm run ensure-host-dist`（由 `pack` / `dist` 调用）会创建占位 `host-dist/`，使 electron-builder 的 `extraResources` 源路径存在。该占位**不是**可运行 Host。若要自包含安装包，请在 `dist` 前把准备好的 Host 布局放入 `apps/desktop/host-dist/`（至少包含 `apps/cli/lib/bin.js` 及 CLI 运行时闭包），或说明最终用户需将 `DSH_DESKTOP_HOST_ROOT` 指向已安装的 monorepo／CLI 树。
+`pnpm run ensure-host-dist`（由 `pack` / `dist` 调用）在 monorepo 构建产物存在时向 `host-dist/` 暂存：
 
-拉起 Host 仍需要系统 `node`；绝不使用 Electron 的 `process.execPath` 作为 Node 二进制。
+| 存在时暂存 | 作用 |
+|---|---|
+| `apps/cli/lib/**`（及 `package.json`、`config/**`） | 已构建 CLI 入口与 chunk |
+| `apps/web/dist/**` | Web SPA 静态资源（若已构建） |
+| `run-host.mjs` | 打包启动器：系统 Node → monorepo 桥接或暂存 bin |
+| `host-manifest.json` | 模式、打包时 monorepo 路径、残余说明 |
+
+**同机桥接：** 当 `host-manifest.json` 中的打包时 monorepo 路径仍含 `apps/cli/lib/bin.js` 时，`run-host.mjs` 会回指该检出（适合本地 `pack`／开发者安装包）。这是 monorepo 感知打包，**不是**完全离线 Host。
+
+**本 MVP 不捆绑：** 便携 Node.js 二进制；完整 monorepo `node_modules`／pnpm store。无 monorepo 桥接时，仅暂存的 CLI bin 无法解析 workspace 包。
+
+**仍需要系统 Node**（PATH 上的 `^22.19` 或 `>=24`，或 `NODE`／`npm_node_execpath`）。绝不使用 Electron 的 `process.execPath` 作为 Node 二进制。若缺少 Node，shell 通过 `formatHostStartErrorDetail` 展示明确中文错误。
+
+打包时若 monorepo 尚无 CLI 产物，`ensure-host-dist` 仍会写占位目录以满足 electron-builder 源路径；该占位**不可运行** — 请先 `pnpm run build` 再执行 `ensure-host-dist`，或设置 `DSH_DESKTOP_HOST_ROOT`。
 
 ### 限制（当前 MVP）
 
-- 安装包内完整捆绑 Host + 前端**延后**；仅 shell 产物只有在能按上文发现 Host 根时才能启动。
-- 代码签名、公证与自动更新不在本包范围。
+- 完全离线 Host（自带运行时闭包 + 便携 Node）**延后**；打包应用在能发现 Host 根且系统 Node 可用时启动。
+- 代码签名、公证与自动更新 feed 发布属发布流水线职责。
 - 不保证在单一 OS 上交叉构建全部目标；优先各平台原生 CI runner。
 
 ## 布局
@@ -154,11 +167,13 @@ MVP 打包**不会**把完整 monorepo Host 打进安装包。运行时 `resolve
 | `src/shell-pages.ts` | 加载／超时／失败页的纯 HTML 构建 |
 | `src/first-run-state.ts` | 在 userData 读写 `hasCompletedFirstLaunch` |
 | `src/host-supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程 |
-| `src/host-launcher.ts` | 解析构建产物／源码两种 `dsh` 启动参数 |
+| `src/host-launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
+| `src/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
 | `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
 | `src/resolve-host-root.ts` | Host 根：环境变量、打包 `resources/host`、monorepo 上溯 |
 | `electron-builder.yml` | Windows / macOS / Linux 打包目标 |
-| `scripts/ensure-host-dist.mjs` | 在 electron-builder 前确保 `host-dist/` 存在 |
+| `scripts/ensure-host-dist.mjs` | 在 electron-builder 前暂存 `host-dist/`（产物或占位） |
+| `scripts/stage-host-dist-lib.mjs` | 暂存助手与 `run-host.mjs` 模板（单测覆盖） |
 
 ## 本包不做
 
@@ -192,7 +207,7 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 - `openExternal`（preload → main）默认仅允许**绝对 http(s)**（任意主机）。非 http(s) scheme（`file:`、`javascript:`、`data:` 等）一律拒绝。设置 `DSH_DESKTOP_OPEN_EXTERNAL_HOSTS` 为逗号分隔主机名列表后，仅允许列表中的主机**以及 localhost**（`localhost`、`127.0.0.1`、`::1`、`*.localhost`）。
 - Host 日志仅作主进程诊断；不要有意在窗口中暴露密钥。
 - 关闭应用会停止 Host 子进程，使回环端口不会长于产品窗口存活。
-- 后续安装包必须附带 Host 布局；仅 monorepo 启动仍依赖系统 `node` 与仓库布局。
+- 安装包通过 `ensure-host-dist` 暂存 Host 产物（优先同机 monorepo 桥接）；仍需要系统 `node`。
 
 ## 布局
 
@@ -203,7 +218,8 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/host-restart-policy.ts` | 纯函数重启／退避策略 |
 | `src/host-log-ring.ts` | 有界 Host 日志 ring（崩溃上下文） |
 | `src/host-ready-timeout.ts` | 解析 `DSH_DESKTOP_HOST_READY_MS` |
-| `src/host-launcher.ts` | 解析构建产物／源码两种 `dsh` 启动参数 |
+| `src/host-launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
+| `src/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
 | `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
 | `src/preload.ts` | 沙箱 preload，暴露 `window.dshDesktop` 壳层 API |
 | `src/ipc-channels.json` | IPC 通道名单一来源；main 以 ESM 导入，preload 打包内联以适配 `sandbox: true` |

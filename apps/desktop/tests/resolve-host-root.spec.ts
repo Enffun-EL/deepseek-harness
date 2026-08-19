@@ -34,6 +34,12 @@ describe('isHostRoot', () => {
     expect(isHostRoot(root)).toBe(true)
   })
 
+  it('accepts a staged host-dist with run-host.mjs only', () => {
+    const root = makeTemp()
+    writeFileSync(path.join(root, 'run-host.mjs'), '// stub\n')
+    expect(isHostRoot(root)).toBe(true)
+  })
+
   it('rejects an empty directory', () => {
     expect(isHostRoot(makeTemp())).toBe(false)
   })
@@ -70,6 +76,21 @@ describe('resolveHostRoot', () => {
     const binDir = path.join(host, 'apps', 'cli', 'lib')
     mkdirSync(binDir, { recursive: true })
     writeFileSync(path.join(binDir, 'bin.js'), '// stub\n')
+
+    const decoy = makeTemp()
+    const resolved = resolveHostRoot({
+      startDir: decoy,
+      env: {},
+      resourcesPath: resources,
+    })
+    expect(resolved).toBe(host)
+  })
+
+  it('accepts packaged resources/host that only has run-host.mjs', () => {
+    const resources = makeTemp()
+    const host = path.join(resources, 'host')
+    mkdirSync(host, { recursive: true })
+    writeFileSync(path.join(host, 'run-host.mjs'), '// stub\n')
 
     const decoy = makeTemp()
     const resolved = resolveHostRoot({
