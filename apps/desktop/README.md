@@ -80,6 +80,9 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/host-ready-timeout.ts` | `DSH_DESKTOP_HOST_READY_MS` resolution |
 | `src/host-launcher.ts` | Resolve built vs source `dsh` launch argv |
 | `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
+| `src/preload.ts` | Sandboxed preload exposing `window.dshDesktop` shell chrome API |
+| `src/shell-bridge.ts` | Main-process IPC handlers for the preload bridge |
+| `src/external-url.ts` | http(s)-only allowlist for `openExternal` |
 | `src/resolve-repo-root.ts` | Locate monorepo root from the packaged path |
 
 ## Out of scope (this package)

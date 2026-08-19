@@ -9,6 +9,7 @@
 
 import { app, BrowserWindow, dialog } from 'electron'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
 import { resolveRepoRoot } from './resolve-repo-root.js'
@@ -22,6 +23,13 @@ import {
   type HostRestartPolicy,
 } from './host-restart-policy.js'
 import { resolveHostReadyTimeoutMs } from './host-ready-timeout.js'
+import { registerShellBridgeHandlers } from './shell-bridge.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+/** Compiled preload entry (sandbox + contextIsolation). */
+const PRELOAD_PATH = path.join(__dirname, 'preload.js')
 
 let mainWindow: BrowserWindow | null = null
 let host: RunningHost | null = null
@@ -44,6 +52,7 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
+    registerShellBridgeHandlers()
     void boot()
   })
 
@@ -80,6 +89,7 @@ async function boot(): Promise<void> {
     minHeight: 600,
     title: 'DSH Desktop',
     webPreferences: {
+      preload: PRELOAD_PATH,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

@@ -80,6 +80,9 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/host-ready-timeout.ts` | 解析 `DSH_DESKTOP_HOST_READY_MS` |
 | `src/host-launcher.ts` | 解析构建产物／源码两种 `dsh` 启动参数 |
 | `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
+| `src/preload.ts` | 沙箱 preload，暴露 `window.dshDesktop` 壳层 API |
+| `src/shell-bridge.ts` | preload 桥的主进程 IPC 处理 |
+| `src/external-url.ts` | `openExternal` 的 http(s) 白名单 |
 | `src/resolve-repo-root.ts` | 从包路径定位 monorepo 根目录 |
 
 ## 本包不做
