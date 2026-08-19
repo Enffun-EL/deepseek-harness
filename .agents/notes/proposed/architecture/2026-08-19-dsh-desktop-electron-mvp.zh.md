@@ -21,7 +21,7 @@ MVP-A 默认选择：
 - 选 Electron 而非 Tauri（Node Host + 现有 Web client）。
 - 桌面 `DSH_HOME` 放在 Electron `userData` 下，避免与 CLI home 互相覆盖。
 - Renderer：`contextIsolation`、关闭 `nodeIntegration`、开启 sandbox；壳层不另建凭据模型。
-- 一个功能一次推送到产品 fork；安装包与自动更新作为后续独立功能。
+- 一个功能一次推送到产品 fork；electron-builder 安装包为独立功能（[打包说明](../../implemented/feature/2026-08-19-desktop-electron-builder-packaging.md)）；自动更新仍靠后。
 
 ## Alternatives considered
 
@@ -38,6 +38,6 @@ MVP-A 默认选择：
 
 ## Risks
 
-- 开发树启动依赖系统 `node` 与 monorepo 布局；安装包若未在后续功能中打包 Host 布局，非开发者首次运行会失败。
+- 开发树启动依赖系统 `node` 与 monorepo 布局；打包壳通过 `DSH_DESKTOP_HOST_ROOT` 或可选的 `resources/host` 解析 Host，直至完整 Host 捆绑上线（[打包说明](../../implemented/feature/2026-08-19-desktop-electron-builder-packaging.md)）。
 - 在 MVP-B 之前仍暴露回环 HTTP 端口面；必须只绑定 `127.0.0.1`。
 - 若 Host 就绪日志变更，壳解析会失效——应保持 `dsh web:` 行约定，或稍后引入显式监护通道。

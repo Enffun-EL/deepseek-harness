@@ -21,7 +21,8 @@ Defaults for MVP-A:
 - Electron over Tauri (Node Host + existing Web client).
 - Desktop `DSH_HOME` under Electron `userData` so CLI and Desktop state do not clobber each other.
 - Renderer: `contextIsolation`, no `nodeIntegration`, sandbox on; no second credential model in the shell.
-- One feature → one push on the product fork; installers and auto-update are separate follow-up features.
+- One feature → one push on the product fork; electron-builder installers are a separate feature ([packaging note](../../implemented/feature/2026-08-19-desktop-electron-builder-packaging.md)); auto-update remains later.
+
 
 ## Alternatives considered
 
@@ -38,6 +39,7 @@ Defaults for MVP-A:
 
 ## Risks
 
-- Dev-tree launch depends on system `node` and monorepo layout; packaged installers must bundle a Host layout in a later feature or first-run fails for non-developers.
+- Dev-tree launch depends on system `node` and monorepo layout; packaged shells resolve Host via `DSH_DESKTOP_HOST_ROOT` or optional `resources/host` until full Host bundling ships ([packaging note](../../implemented/feature/2026-08-19-desktop-electron-builder-packaging.md)).
+
 - Loopback HTTP remains a local port surface until MVP-B; must stay on `127.0.0.1` only.
 - If Host readiness logging changes, the shell parser breaks — keep the `dsh web:` line contract or introduce an explicit supervisor channel later.
