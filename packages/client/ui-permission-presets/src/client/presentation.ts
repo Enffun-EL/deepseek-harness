@@ -91,6 +91,10 @@ const PRESET_LOCALE_KEYS = {
   [FULL_ACCESS_PRESET]: 'preset.danger-full-access',
 } as const
 
+/** Locale keys used for conventional permission preset product labels. */
+export type PermissionPresetLocaleKey =
+  (typeof PRESET_LOCALE_KEYS)[keyof typeof PRESET_LOCALE_KEYS]
+
 /**
  * Resolve a preset label through a bound locale dictionary when the value is
  * conventional; otherwise fall back to the host name display transform.
@@ -102,7 +106,7 @@ const PRESET_LOCALE_KEYS = {
 export function translatePermissionPreset(
   value: string,
   name: string,
-  t: (key: string) => string,
+  t: (key: PermissionPresetLocaleKey) => string,
 ): string {
   const key = PRESET_LOCALE_KEYS[value as keyof typeof PRESET_LOCALE_KEYS]
   return key === undefined ? displayPresetName(name) : t(key)
