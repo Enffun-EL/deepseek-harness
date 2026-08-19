@@ -200,6 +200,7 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/external-url.ts` | `openExternal` 的 http(s) 白名单 |
 | `src/resolve-repo-root.ts` | 从包路径定位 monorepo 根目录 |
 | `src/smoke-host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
+| `scripts/smoke-electron.mjs` | 真实 Electron 主进程启动冒烟 |
 
 ## 无界面 Host 冒烟
 
@@ -220,6 +221,22 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 脚本会构建本包，按与 Electron 主进程相同的方式启动 Host（`resolveRepoRoot` + `resolveHostLaunch` + `startHost`），等待 `dsh web:` 就绪 URL，对该 URL 发 `GET`（期望 HTTP 200），停止 Host，成功退出码 `0`、失败 `1`。临时 `DSH_HOME` 放在系统临时目录，避免污染开发者 CLI home。
 
 若要接近生产式 Host（已构建 CLI + Web 前端），先在仓库根目录执行 `pnpm run build`。没有构建产物时，冒烟会与桌面开发一样回退到经 `tsx` 的源码 CLI。
+
+## Electron 主进程冒烟
+
+单元测试不会加载 Electron 主进程。用此门禁在打包前捕获主进程加载崩溃（例如对 CJS 的 `electron-updater` 使用 named import）：
+
+```sh
+pnpm run desktop:smoke:electron
+```
+
+或：
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
+```
+
+脚本在缺少 `lib/main.js` 时会先构建本包，再用真实 Electron 二进制启动本包并监视 stdout/stderr。**成功：** 出现 `dsh web: http://…` Host 就绪行，或无崩溃的 `[auto-update]` feed／start-check 日志（主进程已加载）。**失败（退出码 1）：** `App threw an error`、`Named export`、`Uncaught Exception` 等模式。**跳过（退出码 2）：** `DSH_DESKTOP_SMOKE_ELECTRON=0`，或无法安装／找到 Electron 二进制。默认超时约 75s（`DSH_DESKTOP_SMOKE_ELECTRON_MS`）。结束时会杀掉 Electron 与 Host 子进程。若二进制缺失，会尝试运行 `electron/install.js`（尊重 `HTTP(S)_PROXY`，并将 `ELECTRON_MIRROR` 默认指向 npmmirror）。
 
 ## 本包不做
 
@@ -265,4 +282,4 @@ GitHub Actions 工作流：[`.github/workflows/desktop-release.yml`](../../.gith
 pnpm --filter @deepseek-ai/dsh-desktop test
 ```
 
-单元测试只覆盖启动／URL 解析等纯逻辑。Host 就绪检查通过手动（或可选 CI）冒烟 `smoke:host` / `desktop:smoke` 完成。
+单元测试只覆盖启动／URL 解析等纯逻辑。Host 就绪检查通过手动（或可选 CI）冒烟 `smoke:host` / `desktop:smoke` 完成。Electron 主进程加载由 `smoke:electron` / `desktop:smoke:electron` 覆盖。

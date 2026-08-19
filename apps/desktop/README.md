@@ -200,6 +200,7 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/external-url.ts` | http(s)-only allowlist for `openExternal` |
 | `src/resolve-repo-root.ts` | Locate monorepo root from the packaged path |
 | `src/smoke-host.ts` | Headless Host readiness smoke (no Electron GUI) |
+| `scripts/smoke-electron.mjs` | Real Electron main-process startup smoke |
 
 ## Headless Host smoke
 
@@ -220,6 +221,22 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 The script builds this package, starts Host the same way Electron main does (`resolveRepoRoot` + `resolveHostLaunch` + `startHost`), waits for the `dsh web:` readiness URL, `GET`s that URL (expects HTTP 200), stops Host, and exits `0` on success or `1` on failure. A temporary `DSH_HOME` under the OS temp directory keeps smoke state off the developer CLI home.
 
 For a production-like Host (built CLI + web frontend), run `pnpm run build` at the repository root first. Without built artifacts the smoke falls back to the source CLI via `tsx` (same as desktop dev).
+
+## Electron main-process smoke
+
+Unit tests do not load Electron main. Use this gate to catch main-process load crashes (for example a CJS `electron-updater` named-import failure) before packaging:
+
+```sh
+pnpm run desktop:smoke:electron
+```
+
+Or:
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
+```
+
+The script builds this package when `lib/main.js` is missing, launches the real Electron binary against the package, and watches stdout/stderr. **Success:** `dsh web: http://…` Host readiness, or an `[auto-update]` feed/start-check log without a crash (main loaded). **Failure (exit 1):** patterns such as `App threw an error`, `Named export`, or `Uncaught Exception`. **Skip (exit 2):** `DSH_DESKTOP_SMOKE_ELECTRON=0`, or the Electron binary cannot be installed/found. Timeout defaults to ~75s (`DSH_DESKTOP_SMOKE_ELECTRON_MS`). On finish it kills Electron and Host children. If the binary is missing it tries `electron/install.js` (honors `HTTP(S)_PROXY` and defaults `ELECTRON_MIRROR` to npmmirror).
 
 ## Out of scope (this package)
 
@@ -265,4 +282,4 @@ Matrix: **windows-latest** (required) and **macos-latest** (`continue-on-error` 
 pnpm --filter @deepseek-ai/dsh-desktop test
 ```
 
-Unit tests cover pure launch/URL helpers only. Host readiness is a manual (or CI-optional) smoke via `smoke:host` / `desktop:smoke`.
+Unit tests cover pure launch/URL helpers only. Host readiness is a manual (or CI-optional) smoke via `smoke:host` / `desktop:smoke`. Electron main-process load is covered by `smoke:electron` / `desktop:smoke:electron`.
