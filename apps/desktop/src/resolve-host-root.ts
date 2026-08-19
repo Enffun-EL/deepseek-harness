@@ -16,10 +16,14 @@ export interface ResolveHostRootOptions {
 }
 
 /**
- * True when `dir` can supply a `dsh` CLI for `dsh web` (built bin, source bin, or monorepo leaf).
+ * True when `dir` can supply a Host launch path for `dsh web`.
+ * Accepts: staged `run-host.mjs`, built/source CLI under `apps/cli`, or monorepo leaf.
  * @param dir - candidate Host root
  */
 export function isHostRoot(dir: string): boolean {
+  // Staged host-dist / resources/host (ensure-host-dist writes run-host.mjs).
+  if (existsSync(path.join(dir, 'run-host.mjs'))) return true
+
   const cliDir = path.join(dir, 'apps', 'cli')
   if (!existsSync(cliDir)) return false
   if (existsSync(path.join(cliDir, 'lib', 'bin.js'))) return true
@@ -36,8 +40,9 @@ export function isHostRoot(dir: string): boolean {
  * 2. Packaged `resources/host` (`extraResources`) when `resourcesPath` is provided
  * 3. Walk parents for a monorepo root (`pnpm-workspace.yaml` + `apps/cli`)
  *
- * Full Host bundling inside the installer is deferred; packaged builds either ship a
- * prepared `resources/host` tree or require `DSH_DESKTOP_HOST_ROOT` / a monorepo checkout.
+ * Packaged builds prefer `resources/host` staged by `ensure-host-dist` (run-host.mjs +
+ * CLI/web artifacts + optional same-machine monorepo bridge). Full offline Host
+ * (vendored node_modules + portable Node) remains deferred.
  *
  * @param options - env, packaged resources path, and walk start
  * @returns absolute Host root path

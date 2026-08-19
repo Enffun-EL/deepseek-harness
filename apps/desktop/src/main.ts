@@ -33,6 +33,7 @@ import {
   isFirstLaunch,
   markFirstLaunchCompleted,
 } from './first-run-state.js'
+import { formatHostStartErrorDetail } from './missing-node.js'
 import {
   buildFirstRunWelcomeScript,
   buildShellPageDataUrl,
@@ -349,7 +350,7 @@ async function handleHostCrash(info: {
  * @param error - thrown failure
  */
 async function presentHostFailure(error: unknown): Promise<void> {
-  const base = error instanceof Error ? error.message : String(error)
+  const base = formatHostStartErrorDetail(error)
   const tail = hostLogRing.toText().slice(-4000)
   const message = tail.length > 0 && !base.includes(tail) ? `${base}\n\n最近日志：\n${tail}` : base
   const kind = classifyHostStartError(message)
