@@ -46,17 +46,21 @@ pnpm desktop
 
 ### Tests
 
-## Auto-update (skeleton)
+## Auto-update (consent dialogs)
 
 Main-process updates use [`electron-updater`](https://www.electron.build/auto-update) with **safe defaults**:
 
 | Behavior | Default |
 |---|---|
-| Check on start | Only when the app is **packaged** (`app.isPackaged`). Dev `electron .` skips the network check. |
+| Check on start | Only when the app is **packaged** (`app.isPackaged`). Dev `electron .` skips the network check unless `DSH_DESKTOP_UPDATE_CHECK` forces it. |
 | Manual check | `setupAutoUpdate().checkForUpdates()` stub for a future menu item |
 | Auto-download | **Off** (`autoDownload = false`) |
+| Download consent | When an update is available, a main-process **Yes/No** dialog asks whether to download now |
 | Silent install | **Never** — install runs only after explicit consent via `requestInstallDownloadedUpdate()` |
+| Install consent | When a download finishes, a **Yes/No** dialog asks whether to restart and install |
 | Auto-install on quit | **Off** until the user consents to install a downloaded update |
+
+There is no client settings UI for updates yet; consent is main-process `dialog.showMessageBox` only. Declining leaves the app running on the current version.
 
 **Feed URL (placeholder):** GitHub Releases for `Enffun-EL/deepseek-harness` (`provider: github`). Override with env:
 
@@ -71,7 +75,7 @@ Main-process updates use [`electron-updater`](https://www.electron.build/auto-up
 
 Code signing and notarization are **not** configured in this skeleton. Unsigned or dev builds may fail signature verification, find no published installer artifacts, or no-op the updater. That is expected for local development; production installers must ship signed packages and a real publish pipeline before relying on auto-update.
 
-Pure helpers (version compare, feed URL builder, update state machine) are unit-tested without launching Electron.
+Pure helpers (version compare, feed URL builder, update state machine, consent copy, consent handler) are unit-tested without launching Electron.
 
 ## First-run and shell status UX
 
@@ -136,8 +140,11 @@ System `node` remains required to spawn Host; Electron's `process.execPath` is n
 
 | Path | Role |
 |---|---|
-| `src/main.ts` | Electron main: window, single-instance, quit → stop Host, auto-update setup |
+| `src/main.ts` | Electron main: window, single-instance, quit → stop Host, auto-update + consent dialogs |
 | `src/auto-update.ts` | electron-updater wiring + consent-preserving controller |
+| `src/update-consent.ts` | Electron Yes/No dialog adapters for download / install |
+| `src/update-consent-handler.ts` | State → prompt orchestration (pure; testable) |
+| `src/update-consent-copy.ts` | Dialog title/message strings (pure) |
 | `src/feed-url.ts` | Feed URL / GitHub provider config (pure) |
 | `src/update-policy.ts` | When to check on start (pure) |
 | `src/update-state.ts` | Update lifecycle state machine (pure) |

@@ -46,17 +46,21 @@ pnpm desktop
 
 ### 测试
 
-## 自动更新（骨架）
+## 自动更新（同意对话框）
 
 主进程通过 [`electron-updater`](https://www.electron.build/auto-update) 集成更新，**默认偏安全**：
 
 | 行为 | 默认 |
 |---|---|
-| 启动时检查 | 仅在应用**已打包**时（`app.isPackaged`）。开发态 `electron .` 不发起网络检查 |
+| 启动时检查 | 仅在应用**已打包**时（`app.isPackaged`）。开发态 `electron .` 不发起网络检查，除非 `DSH_DESKTOP_UPDATE_CHECK` 强制开启 |
 | 手动检查 | `setupAutoUpdate().checkForUpdates()`，供后续菜单项调用 |
 | 自动下载 | **关闭**（`autoDownload = false`） |
+| 下载同意 | 发现可用更新时，主进程弹出 **是／否** 对话框询问是否立即下载 |
 | 静默安装 | **不会**——只有用户通过 `requestInstallDownloadedUpdate()` 明确同意后才安装 |
+| 安装同意 | 下载完成后弹出 **是／否** 对话框询问是否立即重启并安装 |
 | 退出时自动安装 | **关闭**，直到用户对已下载更新给出同意 |
+
+尚无客户端设置页控制更新；同意路径仅为主进程 `dialog.showMessageBox`。选择否时继续运行当前版本。
 
 **更新源（占位）：** GitHub Releases，仓库 `Enffun-EL/deepseek-harness`（`provider: github`）。可用环境变量覆盖：
 
@@ -71,7 +75,7 @@ pnpm desktop
 
 本骨架**未**配置代码签名与公证。未签名或开发构建可能在校验签名时失败、找不到已发布安装包，或更新器直接 no-op。本地开发如此属预期；生产安装包需在流水线中提供签名产物与真实 publish 配置后，再依赖自动更新。
 
-版本比较、feed URL 构建、更新状态机等纯函数已做单元测试，无需启动 Electron。
+版本比较、feed URL 构建、更新状态机、同意文案与同意编排等纯函数已做单元测试，无需启动 Electron。
 
 ## 首次启动与壳层状态页
 
@@ -136,8 +140,11 @@ MVP 打包**不会**把完整 monorepo Host 打进安装包。运行时 `resolve
 
 | 路径 | 职责 |
 |---|---|
-| `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、挂载自动更新 |
+| `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、自动更新与同意对话框 |
 | `src/auto-update.ts` | electron-updater 接线与需用户同意的控制器 |
+| `src/update-consent.ts` | 下载／安装的 Electron 是／否对话框适配 |
+| `src/update-consent-handler.ts` | 状态 → 提示编排（纯函数，可测） |
+| `src/update-consent-copy.ts` | 对话框标题与正文（纯函数） |
 | `src/feed-url.ts` | Feed URL／GitHub provider 配置（纯函数） |
 | `src/update-policy.ts` | 是否在启动时检查（纯函数） |
 | `src/update-state.ts` | 更新生命周期状态机（纯函数） |
