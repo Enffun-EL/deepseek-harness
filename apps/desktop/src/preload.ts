@@ -5,21 +5,20 @@
  * integration in the renderer; all privileged work goes through validated
  * main-process IPC handlers in `shell-bridge.ts`.
  *
- * Compiled as CommonJS (`tsconfig.preload.json`) and kept free of relative
- * imports so Electron can load it under `sandbox: true`.
+ * Built as a single CommonJS bundle (`scripts/build-preload.mjs`) so Electron
+ * can load it under `sandbox: true` without sibling `require()`s. Channel
+ * names come from `ipc-channels.json` (shared with `shell-ipc.ts`) and are
+ * inlined at bundle time.
  *
  * Shell chrome only - not a Host API / ApiClient replacement.
  * @module @deepseek-ai/dsh-desktop/preload
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
+import channelNames from './ipc-channels.json'
 
-/**
- * IPC channel names - keep identical to `shell-ipc.ts`
- * (preload cannot import that module under the sandbox loader).
- */
-const IPC_GET_SHELL_INFO = 'dsh-desktop:get-shell-info' as const
-const IPC_OPEN_EXTERNAL = 'dsh-desktop:open-external' as const
+const IPC_GET_SHELL_INFO = channelNames.IPC_GET_SHELL_INFO
+const IPC_OPEN_EXTERNAL = channelNames.IPC_OPEN_EXTERNAL
 
 /** Shell info payload from main (`DshDesktopShellInfo` in `shell-ipc.ts`). */
 interface DshDesktopShellInfo {
