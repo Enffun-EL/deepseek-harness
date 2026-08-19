@@ -1,0 +1,35 @@
+# DISABLED EXAMPLE — not loaded by Desktop, dsh-web-app, or any profile.
+#
+# Filename ends in `.example` on purpose. Copy to a real path only when you
+# intend to apply it, for example:
+#   dsh web --patch ./apps/desktop/config/desktop-ui.cordis.patch.yml
+# or merge selected rows into:
+#   $DSH_HOME/profiles/<desktop-or-web>/cordis.patch.yml
+# under the Desktop-isolated DSH_HOME (never a shared CLI home for product UI).
+#
+# See apps/desktop/docs/desktop-web-profile-mount.md for layer order and rules.
+#
+# ---------------------------------------------------------------------------
+# ALREADY ON DEFAULT WEB — do not re-insert (double mount breaks the client):
+#   - id: ui-command-palette
+#     name: '@deepseek-ai/dsh-client-ui-command-palette'
+# ---------------------------------------------------------------------------
+#
+# ui-home is atoms-only today (no ./client, no dsh.client). The insert below is
+# documentation only; enabling it fails Host/client resolution until a dual-face
+# client half exists (or `name` points at a thin shell package that owns apply).
+#
+# When ready, replace this empty patch list with:
+#
+# - insert:
+#     - id: ui-home
+#       name: '@deepseek-ai/dsh-client-ui-home'
+#     # - id: ui-desktop-settings
+#     #   name: '@deepseek-ai/dsh-client-ui-desktop-settings'
+#     # - id: ui-git
+#     #   name: '@deepseek-ai/dsh-client-ui-git'
+#     # - id: ui-files
+#     #   name: '@deepseek-ai/dsh-client-ui-files'
+#
+# Empty array = no-op if someone points --patch at this file by mistake.
+[]
