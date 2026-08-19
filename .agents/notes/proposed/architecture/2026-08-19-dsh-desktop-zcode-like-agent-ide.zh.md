@@ -31,9 +31,11 @@ Status: proposed
 | 设置纵深与命令面板的**职责** | 「因为 Zcode 这么排」而克隆每一行设置 |
 | 远程工作区**入口种类**（本地／SSH／WSL／Docker）作为产品意图 | 专有远程 UI 像素或 bot 通道皮肤 |
 
-**视觉体系仍是 DSH：** 沿用既有 `ui-theme`、字体、密度与 DeepSeek 产品语气。新界面应像连贯的 DSH 桌面，而不是换皮。Mock／PR 若以「与 Zcode 像素一致」为目标应驳回；若以「同一待办任务、DSH 材料」为目标可通过。
+**视觉体系仍是 DSH：** 沿用既有 `ui-theme`、字体、密度与 DeepSeek 产品语气，并调向**深色 Agent IDE 气质**（安静侧栏、浮层作曲器、柔和品牌光晕、DeepSeek 蓝 CTA）。对等产品可启发层次与氛围，但不得规定紫色皮、logo 或截图像素网格。见 [agent-ide-visual-direction.md](../../../../apps/desktop/docs/agent-ide-visual-direction.md)。
 
-实现者可读对等产品截图只为**结构**。禁止把已安装对等产品的专有包体、资源或 CSS 解包拷入本仓库。
+Mock／PR 若以「与 Zcode 像素一致」为目标应驳回；若以「同一待办任务 + DSH IDE 氛围」为目标可通过。
+
+实现者可读对等产品截图只为**结构与气质**。禁止把已安装对等产品的专有包体、资源或 CSS 解包拷入本仓库。
 
 ### Relationship to MVP-A shell
 

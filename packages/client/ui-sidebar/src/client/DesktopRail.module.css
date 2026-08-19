@@ -1,19 +1,28 @@
-/* Zcode-like Desktop left rail: presentational IA chrome. Collapse still
-   rides the layout-owned 56px rail width; wide state shows labels and empty
-   section copy. */
+/* Desktop left rail — Agent IDE IA chrome (DSH materials).
+ * Collapse still rides the layout-owned 56px rail width; wide state shows
+ * labels and empty section copy. Mood: quiet rail vs bright stage. */
 
 .root {
   --dsh-sidebar-inline-padding: 12px;
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 6px var(--dsh-sidebar-inline-padding);
+  padding: 8px var(--dsh-sidebar-inline-padding) 10px;
   box-sizing: border-box;
   background: var(--dsw-specific-sidebar-fill);
   color: var(--dsw-alias-label-primary);
   font-size: 14px;
+  border-inline-end: 1px solid var(--dsw-alias-border-l1);
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+body[data-ds-dark-theme] .root {
+  background: color-mix(
+    in srgb,
+    var(--dsw-specific-sidebar-fill) 92%,
+    var(--dsw-static-neutral-1000)
+  );
 }
 
 .root.collapsed {
@@ -82,8 +91,8 @@
   min-height: 36px;
   padding: 6px 10px;
   box-sizing: border-box;
-  border: none;
-  border-radius: 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: transparent;
   color: var(--dsw-alias-label-primary);
   font-size: 14px;
@@ -91,19 +100,29 @@
   line-height: 22px;
   cursor: pointer;
   text-align: left;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 
 .navButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--dsw-specific-sidebar-nav-item-hover);
 }
 
 .navButtonPrimary {
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-button-elevated-fill);
+  border-color: color-mix(in srgb, var(--dsw-static-deepseek-500) 28%, var(--dsw-alias-border-l2));
+  background: color-mix(
+    in srgb,
+    var(--dsw-static-deepseek-500) 12%,
+    var(--dsw-alias-button-elevated-fill)
+  );
+  color: var(--dsw-alias-label-primary);
 }
 
 .navButtonPrimary:hover {
-  background: var(--dsw-alias-button-floating-hover);
+  background: color-mix(
+    in srgb,
+    var(--dsw-static-deepseek-500) 18%,
+    var(--dsw-alias-button-floating-hover)
+  );
 }
 
 .collapsed .navButton {

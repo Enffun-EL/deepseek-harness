@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/architecture/2026-08-19-dsh-desktop-zcode-like-agent-ide.md
-2026-08-19-dsh-desktop-zcode-like-agent-ide.md: 92743c59a24ddf257a13ce2136f0b47aee163a1e
-2026-08-19-dsh-desktop-zcode-like-agent-ide.zh.md: 96327df8f7a422edcf03ad42035f41e9a38457c5
+2026-08-19-dsh-desktop-zcode-like-agent-ide.md: db5db5e7c97a65ed4dfbf29c9ff4774ea5fcbb3c
+2026-08-19-dsh-desktop-zcode-like-agent-ide.zh.md: 9c192329584743fbcfcc0000e27da6a00a1ba123

@@ -31,9 +31,11 @@ Peer products (Zcode and similar) are an **information-architecture and workflow
 | Settings depth and command-palette *jobs* | Layout clones of every settings row order “because Zcode did” |
 | Remote workspace *entry kinds* (local / SSH / WSL / Docker) as product intent | Proprietary remote UX pixels or bot-channel skins |
 
-**Visual system stays DSH:** existing `ui-theme`, typography, density, and DeepSeek product voice. New surfaces should feel like a coherent DSH desktop, not a reskin. When a mock or PR is “pixel parity with Zcode,” reject it; when it is “same job-to-be-done, DSH materials,” accept.
+**Visual system stays DSH:** existing `ui-theme`, typography, density, and DeepSeek product voice — tuned toward a **dark Agent IDE mood** (quiet rail, floating composer, soft brand wash, DeepSeek blue CTAs). Peer products may inspire hierarchy and atmosphere; they must not dictate purple skins, logos, or screenshot pixel grids. See [agent-ide-visual-direction.md](../../../../apps/desktop/docs/agent-ide-visual-direction.md).
 
-Implementers may read peer screenshots for **structure only**. Do not unpack or copy proprietary app bundles, assets, or CSS from installed peer products into this repo.
+When a mock or PR is “pixel parity with Zcode,” reject it; when it is “same job-to-be-done + DSH IDE atmosphere,” accept.
+
+Implementers may read peer screenshots for **structure and mood only**. Do not unpack or copy proprietary app bundles, assets, or CSS from installed peer products into this repo.
 
 ### Relationship to MVP-A shell
 
