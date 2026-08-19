@@ -10,7 +10,7 @@ import { app, BrowserWindow, dialog } from 'electron'
 import path from 'node:path'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
-import { resolveRepoRoot } from './resolve-repo-root.js'
+import { resolveHostRoot } from './resolve-host-root.js'
 
 let mainWindow: BrowserWindow | null = null
 let host: RunningHost | null = null
@@ -74,9 +74,11 @@ async function boot(): Promise<void> {
   await mainWindow.loadURL(loadingDataUrl('正在启动本地 Host…'))
 
   try {
-    const repoRoot = resolveRepoRoot()
+    const hostRoot = resolveHostRoot({
+      resourcesPath: app.isPackaged ? process.resourcesPath : null,
+    })
     const nodeCommand = resolveNodeCommand()
-    const launch = resolveHostLaunch(repoRoot, nodeCommand)
+    const launch = resolveHostLaunch(hostRoot, nodeCommand)
     const dshHome = path.join(app.getPath('userData'), 'dsh-home')
 
     host = await startHost({

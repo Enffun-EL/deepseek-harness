@@ -1,0 +1,84 @@
+# electron-builder configuration for @deepseek-ai/dsh-desktop (v24.x).
+# Pinned below v25+ so the workspace supply-chain gate does not pull
+# @electron/rebuild → git:@electron/node-gyp (blocked exotic subdependency).
+# Builds the Electron shell only. Host (`dsh web`) is not fully vendored into
+# the installer yet — see README "Packaging" for DSH_DESKTOP_HOST_ROOT and the
+# optional resources/host layout.
+
+appId: ai.deepseek.dsh.desktop
+productName: DSH Desktop
+copyright: Copyright © DeepSeek
+
+# Compiled main process (tsc → lib/). Do not pack tests or TypeScript sources.
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - lib/**/*
+  - package.json
+  - '!**/*.map'
+  - '!**/*.ts'
+  - '!tests/**'
+  - '!src/**'
+  - '!release/**'
+  - '!host-dist/**'
+  - '!build/**'
+
+# Optional prepared Host tree. When present at pack time, electron-builder
+# copies it next to the app as resources/host. The shell resolves that path via
+# process.resourcesPath (see resolveHostRoot). Omit the directory to ship a
+# shell-only artifact that requires DSH_DESKTOP_HOST_ROOT or a monorepo checkout.
+extraResources:
+  - from: host-dist
+    to: host
+    filter:
+      - '**/*'
+    # Missing host-dist is expected for shell-only packs; electron-builder 24+
+    # still requires the path to exist when listed. Create an empty host-dist/
+    # (gitignored placeholder) or a real Host tree before `pnpm pack` / `dist`.
+
+asar: true
+
+# Never publish from local pack scripts; CI/release owns distribution.
+publish: null
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: DSH Desktop
+  deleteAppDataOnUninstall: false
+
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.developer-tools
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  # Code signing / notarization are release-pipeline concerns; unsigned local DMGs are expected.
+
+dmg:
+  writeUpdateInfo: false
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  category: Development
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}

@@ -6,7 +6,8 @@
   "type": "module",
   "main": "lib/main.js",
   "files": [
-    "lib"
+    "lib",
+    "electron-builder.yml"
   ],
   "license": "MIT",
   "repository": {
@@ -18,13 +19,20 @@
     "build": "tsc -p tsconfig.json",
     "dev": "pnpm run build && electron .",
     "start": "electron .",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "ensure-host-dist": "node ./scripts/ensure-host-dist.mjs",
+    "pack": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --dir",
+    "dist": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml",
+    "dist:win": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --win nsis portable",
+    "dist:mac": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --mac dmg",
+    "dist:linux": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --linux AppImage"
   },
   "dependencies": {
     "tsx": "^4.20.3"
   },
   "devDependencies": {
     "electron": "^37.2.0",
+    "electron-builder": "^24.13.3",
     "typescript": "~5.9.2",
     "vitest": "^3.2.4"
   }
