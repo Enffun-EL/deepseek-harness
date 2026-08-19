@@ -8,6 +8,10 @@
 
 import { app, BrowserWindow, dialog } from 'electron'
 import path from 'node:path'
+import {
+  setupAutoUpdate,
+  type AutoUpdateController,
+} from './auto-update.js'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
 import { resolveRepoRoot } from './resolve-repo-root.js'
@@ -15,6 +19,16 @@ import { resolveRepoRoot } from './resolve-repo-root.js'
 let mainWindow: BrowserWindow | null = null
 let host: RunningHost | null = null
 let starting = false
+/** Auto-update controller; retained for a future menu "Check for updates" action. */
+let autoUpdate: AutoUpdateController | null = null
+
+/**
+ * Manual-check / install-consent entry point for a future app menu.
+ * @returns controller after boot has called {@link setupAutoUpdate}, else null
+ */
+export function getAutoUpdateController(): AutoUpdateController | null {
+  return autoUpdate
+}
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -69,6 +83,19 @@ async function boot(): Promise<void> {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+
+  // Skeleton: check on start when packaged; manual check via controller later.
+  // Never auto-downloads or silent-installs without consent (see auto-update.ts).
+  autoUpdate = setupAutoUpdate({
+    getMainWindow: () => mainWindow,
+    onStateChange: (state) => {
+      console.log(
+        `[auto-update] phase=${state.phase}` +
+          (state.availableVersion !== null ? ` available=${state.availableVersion}` : '') +
+          (state.errorMessage !== null ? ` error=${state.errorMessage}` : ''),
+      )
+    },
   })
 
   await mainWindow.loadURL(loadingDataUrl('正在启动本地 Host…'))
