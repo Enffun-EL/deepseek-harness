@@ -1,16 +1,17 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "ignoreDeprecations": "6.0",
     "outDir": "lib",
     "rootDir": "src",
     "strict": true,
     "skipLibCheck": true,
     "declaration": true,
     "sourceMap": true,
-    "types": ["node", "electron"]
+    "esModuleInterop": true,
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts"],
-  "exclude": ["src/preload.ts"]
+  "include": ["src/preload.ts"]
 }

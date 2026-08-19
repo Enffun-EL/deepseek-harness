@@ -15,7 +15,7 @@
     "directory": "apps/desktop"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node --input-type=module -e \"import { copyFileSync } from 'node:fs'; copyFileSync('src/dsh-desktop.d.ts', 'lib/dsh-desktop.d.ts')\"",
     "dev": "pnpm run build && electron .",
     "start": "electron .",
     "test": "vitest run --config vitest.config.ts"
