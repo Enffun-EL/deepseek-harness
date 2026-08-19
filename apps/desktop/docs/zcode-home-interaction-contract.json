@@ -1,0 +1,296 @@
+{
+  "version": 1,
+  "title": "Zcode home interaction contract",
+  "purpose": "Implementer-facing contract for Zcode home shell chrome, empty states, composer entry points, and P0 scope. Labels are user-facing copy anchors; IDs are stable for wiring.",
+  "routes": [
+    {
+      "id": "home",
+      "path": "/",
+      "description": "Default landing: greeting, composer, starters, project/task lists"
+    },
+    {
+      "id": "commandPalette",
+      "path": null,
+      "trigger": "Ctrl+K",
+      "description": "Global search / command palette overlay"
+    },
+    {
+      "id": "newTask",
+      "path": null,
+      "trigger": "Ctrl+N",
+      "description": "Create a new task from home or palette"
+    },
+    {
+      "id": "automation",
+      "path": "/automation",
+      "description": "Scheduled and idle automation templates"
+    },
+    {
+      "id": "pluginMarket",
+      "path": "/plugins",
+      "description": "Plugin market: installed list and category browse"
+    },
+    {
+      "id": "remoteWizard",
+      "path": "/remote",
+      "description": "Remote project connection wizard"
+    },
+    {
+      "id": "settings",
+      "path": null,
+      "description": "Settings flyout from bottom-left gear (not a full-page route in P0)"
+    }
+  ],
+  "leftRail": [
+    {
+      "id": "newTask",
+      "label": "新建任务",
+      "shortcut": "Ctrl+N",
+      "action": "createTask"
+    },
+    {
+      "id": "search",
+      "label": "搜索",
+      "shortcut": "Ctrl+K",
+      "action": "openCommandPalette"
+    },
+    {
+      "id": "automation",
+      "label": "自动化",
+      "action": "navigateAutomation"
+    },
+    {
+      "id": "pluginMarket",
+      "label": "插件市场",
+      "action": "navigatePluginMarket"
+    },
+    {
+      "id": "projectModeToggle",
+      "label": "分组/项目",
+      "control": "segmentedToggle",
+      "options": [
+        { "id": "group", "label": "分组" },
+        { "id": "project", "label": "项目" }
+      ],
+      "description": "Switches left-list presentation between task groups and projects"
+    }
+  ],
+  "home": {
+    "emptyStates": {
+      "projects": {
+        "id": "emptyProjects",
+        "copy": "尚未打开项目"
+      },
+      "tasks": {
+        "id": "emptyTasks",
+        "copy": "还没有任务"
+      }
+    },
+    "center": {
+      "greeting": {
+        "id": "timeBasedGreeting",
+        "timeBased": true,
+        "description": "Center greeting may vary by local time of day"
+      },
+      "modelMissingBanner": {
+        "id": "modelMissingBanner",
+        "visibleWhen": "noUsableModelConfigured",
+        "actions": [
+          { "id": "upgrade", "label": "升级" },
+          { "id": "configure", "label": "配置" }
+        ]
+      }
+    },
+    "composer": {
+      "projectSelector": {
+        "id": "projectSelector",
+        "label": "选择项目",
+        "control": "dropdown",
+        "options": [
+          { "id": "openFolder", "label": "打开文件夹" },
+          { "id": "remoteConnect", "label": "远程连接", "opens": "remoteWizard" },
+          { "id": "noProject", "label": "不在项目中工作" }
+        ]
+      },
+      "permissionMode": {
+        "id": "permissionMode",
+        "control": "dropdown",
+        "default": "confirmBeforeChange",
+        "bindsTo": "permissionModes"
+      },
+      "modelPicker": {
+        "id": "modelPicker",
+        "actions": [
+          { "id": "manageModels", "label": "管理模型" }
+        ]
+      },
+      "starters": {
+        "promptChips": {
+          "id": "starterPromptChips",
+          "description": "One-click starter prompts inserted into the composer"
+        },
+        "templateCards": [
+          { "id": "gitStandupSummary", "label": "Git 站会摘要" },
+          { "id": "ciFailureReport", "label": "CI 失败报告" },
+          { "id": "custom", "label": "自定义" }
+        ]
+      }
+    },
+    "bottomLeft": [
+      {
+        "id": "account",
+        "label": "连接使用",
+        "action": "openAccountOrConnect"
+      },
+      {
+        "id": "phoneRemote",
+        "label": "手机远程",
+        "action": "openPhoneRemote"
+      },
+      {
+        "id": "settings",
+        "label": "设置",
+        "control": "gearIcon",
+        "action": "openSettingsFlyout"
+      }
+    ],
+    "settingsFlyout": {
+      "id": "settingsFlyout",
+      "sections": [
+        { "id": "theme", "label": "主题" },
+        { "id": "zoom", "label": "缩放" },
+        { "id": "language", "label": "语言" },
+        { "id": "usage", "label": "用量" },
+        { "id": "upgrade", "label": "升级" },
+        { "id": "connect", "label": "连接" }
+      ]
+    }
+  },
+  "permissionModes": [
+    {
+      "id": "confirmBeforeChange",
+      "label": "变更前确认",
+      "description": "Require user confirmation before applying edits or side effects"
+    },
+    {
+      "id": "autoEdit",
+      "label": "自动编辑",
+      "description": "Apply file edits without per-change confirmation; other sensitive actions may still prompt"
+    },
+    {
+      "id": "planMode",
+      "label": "计划模式",
+      "description": "Plan-first interaction; defer mutating work until plan is accepted"
+    },
+    {
+      "id": "fullAccess",
+      "label": "完全访问",
+      "description": "Least restrictive mode for trusted sessions; still subject to product hard guards"
+    }
+  ],
+  "remoteWizard": {
+    "id": "remoteWizard",
+    "steps": [
+      {
+        "id": "chooseMethod",
+        "label": "选择方式",
+        "options": [
+          { "id": "ssh", "label": "SSH" },
+          { "id": "wsl", "label": "WSL" },
+          { "id": "docker", "label": "Docker" }
+        ]
+      },
+      {
+        "id": "configure",
+        "label": "配置",
+        "description": "Method-specific connection fields"
+      },
+      {
+        "id": "connecting",
+        "label": "连接中",
+        "description": "In-progress connection state; block advance until success or error"
+      },
+      {
+        "id": "chooseDirectory",
+        "label": "选择目录",
+        "description": "Pick remote working directory after connection succeeds"
+      }
+    ]
+  },
+  "pluginMarket": {
+    "id": "pluginMarket",
+    "views": [
+      {
+        "id": "installed",
+        "label": "已安装",
+        "description": "List and manage installed plugins"
+      },
+      {
+        "id": "categories",
+        "label": "分类",
+        "description": "Browse plugins by category"
+      }
+    ]
+  },
+  "automation": {
+    "id": "automation",
+    "sections": [
+      {
+        "id": "scheduled",
+        "label": "定时",
+        "description": "Scheduled automation templates"
+      },
+      {
+        "id": "idle",
+        "label": "空闲",
+        "description": "Idle-triggered automation templates"
+      },
+      {
+        "id": "keepAwake",
+        "label": "保持唤醒",
+        "control": "toggle",
+        "description": "Keep machine awake while automations need to run"
+      }
+    ]
+  },
+  "commandPalette": {
+    "id": "commandPalette",
+    "shortcut": "Ctrl+K",
+    "filters": [
+      { "id": "all", "label": "全部" },
+      { "id": "actions", "label": "操作" },
+      { "id": "tasks", "label": "任务" },
+      { "id": "files", "label": "文件" }
+    ]
+  },
+  "mvpP0": [
+    "leftRail.newTask with Ctrl+N",
+    "leftRail.search / commandPalette with Ctrl+K and filters 全部/操作/任务/文件",
+    "leftRail.automation and leftRail.pluginMarket entry points",
+    "leftRail.projectModeToggle 分组/项目",
+    "home.emptyStates for projects and tasks",
+    "home.center time-based greeting",
+    "home.center.modelMissingBanner with 升级/配置",
+    "composer.projectSelector (打开文件夹 / 远程连接 / 不在项目中工作)",
+    "composer.permissionMode bound to permissionModes",
+    "composer.modelPicker 管理模型",
+    "composer starters: prompt chips + template cards (Git 站会摘要, CI 失败报告, 自定义)",
+    "bottomLeft account 连接使用, phone remote, settings gear",
+    "settingsFlyout: theme, zoom, language, usage, upgrade, connect",
+    "remoteWizard four steps: 选择方式 SSH|WSL|Docker → 配置 → 连接中 → 选择目录",
+    "pluginMarket installed + categories",
+    "automation scheduled + idle templates + keep awake toggle"
+  ],
+  "outOfScopeP0": [
+    "Full multi-window / multi-workspace management",
+    "Deep plugin authoring IDE inside the market",
+    "Mobile companion app implementation beyond home entry affordance",
+    "Billing checkout flows beyond upgrade entry points",
+    "Team/org admin consoles",
+    "Non-SSH/WSL/Docker remote providers",
+    "Advanced automation builder (custom graphs, branching) beyond templates",
+    "Full settings app shell; P0 is flyout sections only",
+    "Offline-only / air-gapped enterprise policy packs",
+    "Pixel-perfect marketing site parity outside the home shell"
+  ]
+}
