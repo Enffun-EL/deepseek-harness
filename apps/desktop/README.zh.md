@@ -84,6 +84,27 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/shell-bridge.ts` | preload 桥的主进程 IPC 处理 |
 | `src/external-url.ts` | `openExternal` 的 http(s) 白名单 |
 | `src/resolve-repo-root.ts` | 从包路径定位 monorepo 根目录 |
+| `src/smoke-host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
+
+## 无界面 Host 冒烟
+
+需要快速确认桌面 Host 启动路径能拉起并提供 HTTP、又不想打开 Electron 时使用。**不需要** `DEEPSEEK_API_KEY`。
+
+在仓库根目录（推荐）：
+
+```sh
+pnpm run desktop:smoke
+```
+
+或在本包：
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
+```
+
+脚本会构建本包，按与 Electron 主进程相同的方式启动 Host（`resolveRepoRoot` + `resolveHostLaunch` + `startHost`），等待 `dsh web:` 就绪 URL，对该 URL 发 `GET`（期望 HTTP 200），停止 Host，成功退出码 `0`、失败 `1`。临时 `DSH_HOME` 放在系统临时目录，避免污染开发者 CLI home。
+
+若要接近生产式 Host（已构建 CLI + Web 前端），先在仓库根目录执行 `pnpm run build`。没有构建产物时，冒烟会与桌面开发一样回退到经 `tsx` 的源码 CLI。
 
 ## 本包不做
 
@@ -124,3 +145,9 @@ GitHub Actions 工作流：[`.github/workflows/desktop-release.yml`](../../.gith
 
 - 完整 monorepo 的 `pnpm run build`（Host／前端；桌面包单测不依赖）
 - electron-builder 安装包、代码签名、Apple 公证、自动更新通道
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop test
+```
+
+单元测试只覆盖启动／URL 解析等纯逻辑。Host 就绪检查通过手动（或可选 CI）冒烟 `smoke:host` / `desktop:smoke` 完成。
