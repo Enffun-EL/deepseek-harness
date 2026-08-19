@@ -41,7 +41,8 @@ describe('ui-sidebar apply', () => {
     // Copy rides the standard locale seat, not the inject face.
     expect(b.slots.entries('sidebar')[0]!.locale).toBe('sidebar')
     const injected = (b.slots.entries('sidebar')[0]!.inject as () => SidebarRootInjected)()
-    expect(Object.keys(injected)).toEqual(['startSession', 'toggleSidebar'])
+    expect(Object.keys(injected)).toEqual(['startSession', 'toggleSidebar', 'desktopRail'])
+    expect(injected.desktopRail).toBe(false)
     // Both arms delegate to the runtime's shared New Session action.
     injected.startSession('workspace' as never)
     expect(b.workspaces.startSession).toHaveBeenCalledWith('workspace')
@@ -49,6 +50,13 @@ describe('ui-sidebar apply', () => {
     expect(b.workspaces.startSession).toHaveBeenLastCalledWith(undefined)
     injected.toggleSidebar()
     expect(b.layout.toggleSidebar).toHaveBeenCalledOnce()
+  })
+
+  it('opts into DesktopRail when config.desktopRail is true', async () => {
+    const b = await bench()
+    await b.ctx.plugin({ inject: [...inject], apply }, { desktopRail: true }).await()
+    const injected = (b.slots.entries('sidebar')[0]!.inject as () => SidebarRootInjected)()
+    expect(injected.desktopRail).toBe(true)
   })
 
   it('fails when no live owner declared the sidebar slot', async () => {

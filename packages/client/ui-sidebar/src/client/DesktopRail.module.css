@@ -1,0 +1,275 @@
+/* Zcode-like Desktop left rail: presentational IA chrome. Collapse still
+   rides the layout-owned 56px rail width; wide state shows labels and empty
+   section copy. */
+
+.root {
+  --dsh-sidebar-inline-padding: 12px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 6px var(--dsh-sidebar-inline-padding);
+  box-sizing: border-box;
+  background: var(--dsw-specific-sidebar-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
+  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.root.collapsed {
+  padding: 18px 10px 6px;
+}
+
+.root.quietBars {
+  --dsh-scrollbar-thumb: transparent;
+  --dsh-scrollbar-thumb-hover: transparent;
+}
+
+.header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 44px;
+  margin-bottom: 4px;
+}
+
+.collapsed .header {
+  height: 36px;
+  margin-bottom: 12px;
+  justify-content: flex-start;
+}
+
+.iconButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.iconButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.collapsed .iconButton {
+  width: 36px;
+  height: 36px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.topActions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.navButton {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.navButton:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.navButtonPrimary {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-button-elevated-fill);
+}
+
+.navButtonPrimary:hover {
+  background: var(--dsw-alias-button-floating-hover);
+}
+
+.collapsed .navButton {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+}
+
+.collapsed .navButtonPrimary {
+  border-color: transparent;
+  background: transparent;
+}
+
+.collapsed .navButton:hover,
+.collapsed .navButtonPrimary:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.navShortcut {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.collapsed .navLabel,
+.collapsed .navShortcut {
+  display: none;
+}
+
+.sections {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+}
+
+.section {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sectionGrow {
+  flex: 1;
+  min-height: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.emptyCopy {
+  margin: 0;
+  padding: 8px 4px 12px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.regionArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.collapsed .sectionTitle,
+.collapsed .emptyCopy {
+  display: none;
+}
+
+.footArea {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.accountCluster {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.accountButton {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: default;
+  text-align: left;
+}
+
+.collapsed .accountButton {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+.accountLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.collapsed .accountLabel {
+  display: none;
+}
+
+.footerActions,
+.settingsArea {
+  flex: none;
+  min-width: 0;
+  width: 100%;
+}
+
+.footerActions {
+  display: flex;
+}
+
+.collapsed .footArea {
+  align-items: center;
+}
+
+.collapsed .settingsArea,
+.collapsed .footerActions,
+.collapsed .accountCluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: auto;
+}

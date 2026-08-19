@@ -65,7 +65,8 @@ export interface SidebarFooterActionOwnerProps {
 /**
  * Registrant-private injected share (arrives via the register inject
  * factory). The shell keeps only its own controls: starting a Session from
- * the New Session button and toggling the column.
+ * the New Session button and toggling the column, plus the chrome mode flag
+ * that selects DesktopRail over the web SidebarRoot.
  */
 export type SidebarRootInjected = {
   /**
@@ -76,6 +77,11 @@ export type SidebarRootInjected = {
   startSession: (workspaceId?: WorkspaceId) => void
   /** Toggle the sidebar column through the layout service. */
   toggleSidebar: () => void
+  /**
+   * When true, render the Zcode-like Desktop left rail instead of the web
+   * sidebar chrome. Sourced from plugin Config `desktopRail` (default false).
+   */
+  desktopRail: boolean
 }
 
 /**
