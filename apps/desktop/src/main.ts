@@ -36,7 +36,8 @@ import {
 import {
   buildFirstRunWelcomeScript,
   buildShellPageDataUrl,
-  classifyHostStartError,
+  describeHostLaunchError,
+  FIRST_RUN_WELCOME_MAX_ATTEMPTS,
   SHELL_RETRY_URL,
 } from './shell-pages.js'
 
@@ -239,20 +240,78 @@ async function startManagedHost(): Promise<void> {
   }
 
   host = next
+  // Non-blocking first-run strip: schedule before navigation so did-finish-load can inject.
+  if (pendingFirstRunWelcome) {
+    scheduleFirstRunWelcome(userDataPath)
+  }
   await mainWindow.loadURL(next.url)
+}
 
-  if (pendingFirstRunWelcome && mainWindow !== null) {
+/**
+ * Inject the first-run welcome strip after Host UI load, with limited retries.
+ * Uses `did-finish-load` so injection is not raced against an unfinished navigation.
+ * Failures never block Host use; the first-run flag stays unset until success.
+ * @param userDataPath - Electron userData directory for first-run state
+ */
+function scheduleFirstRunWelcome(userDataPath: string): void {
+  if (mainWindow === null) return
+  const contents = mainWindow.webContents
+  let attempts = 0
+  let finished = false
+
+  const detach = (): void => {
+    contents.removeListener('did-finish-load', onDidFinishLoad)
+  }
+
+  const tryInject = async (): Promise<void> => {
+    if (finished || quitting || mainWindow === null) return
+    if (!pendingFirstRunWelcome) {
+      finished = true
+      detach()
+      return
+    }
+    if (attempts >= FIRST_RUN_WELCOME_MAX_ATTEMPTS) {
+      finished = true
+      detach()
+      console.warn(
+        `dsh-desktop: first-run welcome strip gave up after ${String(FIRST_RUN_WELCOME_MAX_ATTEMPTS)} attempts`,
+      )
+      return
+    }
+    attempts += 1
     try {
-      await mainWindow.webContents.executeJavaScript(buildFirstRunWelcomeScript(), true)
-      markFirstLaunchCompleted(userDataPath)
-      pendingFirstRunWelcome = false
+      const ok = await contents.executeJavaScript(buildFirstRunWelcomeScript(), true)
+      if (ok === true) {
+        markFirstLaunchCompleted(userDataPath)
+        pendingFirstRunWelcome = false
+        finished = true
+        detach()
+        return
+      }
+      console.warn(
+        `dsh-desktop: first-run welcome strip not applied (attempt ${String(attempts)}/${String(FIRST_RUN_WELCOME_MAX_ATTEMPTS)})`,
+      )
     } catch (error) {
       // Welcome strip is non-blocking; keep first-run flag so a later boot can retry.
       console.warn(
-        'dsh-desktop: first-run welcome strip failed',
+        `dsh-desktop: first-run welcome strip failed (attempt ${String(attempts)}/${String(FIRST_RUN_WELCOME_MAX_ATTEMPTS)})`,
         error instanceof Error ? error.message : error,
       )
     }
+    if (attempts >= FIRST_RUN_WELCOME_MAX_ATTEMPTS) {
+      finished = true
+      detach()
+    }
+  }
+
+  const onDidFinishLoad = (): void => {
+    void tryInject()
+  }
+
+  contents.on('did-finish-load', onDidFinishLoad)
+  // If the Host document already finished loading (fast cache), inject immediately.
+  if (!contents.isLoading()) {
+    void tryInject()
   }
 }
 
@@ -346,13 +405,18 @@ async function handleHostCrash(info: {
 
 /**
  * Surface a start/restart failure in the window and a modal dialog.
+ * Missing system Node is rewritten to branded Chinese product copy.
  * @param error - thrown failure
  */
 async function presentHostFailure(error: unknown): Promise<void> {
-  const base = error instanceof Error ? error.message : String(error)
+  const described = describeHostLaunchError(error)
   const tail = hostLogRing.toText().slice(-4000)
-  const message = tail.length > 0 && !base.includes(tail) ? `${base}\n\n最近日志：\n${tail}` : base
-  const kind = classifyHostStartError(message)
+  // Prefer product copy alone for missing-node; raw ENOENT stacks are not helpful.
+  const message =
+    described.missingNode || tail.length === 0 || described.detail.includes(tail)
+      ? described.detail
+      : `${described.detail}\n\n最近日志：\n${tail}`
+  const kind = described.kind
   console.error(message)
   if (mainWindow !== null) {
     await mainWindow.loadURL(

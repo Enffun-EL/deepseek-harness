@@ -77,7 +77,9 @@ Pure helpers (version compare, feed URL builder, update state machine) are unit-
 
 While the local Host starts, the main process shows a branded Chinese **loading** page (data URL). On Host **failure** or **readiness timeout**, it shows a matching error page with a **Retry** control that re-runs boot (stops any prior child, then starts Host again). Pages are built by pure helpers in `src/shell-pages.ts` (unit-tested; no `nodeIntegration`).
 
-On the first successful Host UI load for a profile, the shell injects a short **welcome status strip** at the top of the Web UI. The strip does not block interaction and auto-dismisses. Completion is stored as `hasCompletedFirstLaunch` in `desktop-shell-state.json` under Electron `userData`. Later launches skip the strip. Corrupt or missing state is treated as not completed.
+Missing system `node` (spawn `ENOENT` / not on `PATH`) is classified by `describeHostLaunchError` into branded Chinese product copy instead of an opaque stack, with the same Retry control.
+
+On the first successful Host UI load for a profile, the shell injects a short **welcome status strip** at the top of the Web UI via `did-finish-load` (up to 3 non-blocking attempts). The strip does not block interaction and auto-dismisses. Completion is stored as `hasCompletedFirstLaunch` in `desktop-shell-state.json` under Electron `userData`. Later launches skip the strip. Corrupt or missing state is treated as not completed.
 
 Security invariants for the shell window stay fixed: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
 
@@ -180,6 +182,7 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 
 - Bind the Host to **`127.0.0.1` only** until MVP-B removes the loopback HTTP surface.
 - Renderer isolation: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The shell does not add a second credential model.
+- `openExternal` (preload → main) allows **absolute http(s) only** by default (any host). Non-http(s) schemes (`file:`, `javascript:`, `data:`, …) are always rejected. Set `DSH_DESKTOP_OPEN_EXTERNAL_HOSTS` to a comma-separated hostname list to restrict opens to those hosts **plus localhost** (`localhost`, `127.0.0.1`, `::1`, `*.localhost`).
 - Host logs are main-process diagnostics; do not intentionally surface secrets in the window.
 - Closing the app stops the Host child so the loopback port does not outlive the product window.
 - Packaged installers must ship a Host layout later; a monorepo-only launch still needs system `node` and repository layout.
@@ -197,7 +200,8 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
 | `src/preload.ts` | Sandboxed preload exposing `window.dshDesktop` shell chrome API |
 | `src/shell-bridge.ts` | Main-process IPC handlers for the preload bridge |
-| `src/external-url.ts` | http(s)-only allowlist for `openExternal` |
+| `src/external-url.ts` | http(s) + optional host allowlist for `openExternal` |
+| `src/shell-pages.ts` | Branded loading/error HTML; first-run script; `describeHostLaunchError` |
 | `src/resolve-repo-root.ts` | Locate monorepo root from the packaged path |
 | `src/smoke-host.ts` | Headless Host readiness smoke (no Electron GUI) |
 

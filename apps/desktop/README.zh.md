@@ -77,7 +77,9 @@ pnpm desktop
 
 本地 Host 启动期间，主进程展示品牌化中文**加载页**（data URL）。Host **失败**或**就绪超时**时展示对应错误页，并提供**重试**（停止旧子进程后重新 boot）。页面由 `src/shell-pages.ts` 中的纯函数生成（可单测；不开启 `nodeIntegration`）。
 
-每个配置档案**首次**成功加载 Host Web UI 后，壳层会在页面顶部注入一条简短**欢迎状态条**，不阻断操作并自动消失。完成标记写入 Electron `userData` 下的 `desktop-shell-state.json`（字段 `hasCompletedFirstLaunch`）。之后启动不再显示。状态缺失或损坏视为未完成。
+缺少系统 `node`（spawn `ENOENT` / 不在 `PATH`）时，由 `describeHostLaunchError` 归类为品牌化中文说明，而不是不透明堆栈，并同样提供重试。
+
+每个配置档案**首次**成功加载 Host Web UI 后，壳层在 `did-finish-load` 后注入顶部**欢迎状态条**（最多 3 次、不阻断交互），并自动消失。完成标记写入 Electron `userData` 下的 `desktop-shell-state.json`（字段 `hasCompletedFirstLaunch`）。之后启动不再显示。状态缺失或损坏视为未完成。
 
 壳层窗口安全不变量保持不变：`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。
 
@@ -180,6 +182,7 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 
 - 在 MVP-B 去掉回环 HTTP 面之前，Host **仅绑定 `127.0.0.1`**。
 - 渲染进程隔离：`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。壳层不另建凭据模型。
+- `openExternal`（preload → main）默认仅允许**绝对 http(s)**（任意主机）。非 http(s) scheme（`file:`、`javascript:`、`data:` 等）一律拒绝。设置 `DSH_DESKTOP_OPEN_EXTERNAL_HOSTS` 为逗号分隔主机名列表后，仅允许列表中的主机**以及 localhost**（`localhost`、`127.0.0.1`、`::1`、`*.localhost`）。
 - Host 日志仅作主进程诊断；不要有意在窗口中暴露密钥。
 - 关闭应用会停止 Host 子进程，使回环端口不会长于产品窗口存活。
 - 后续安装包必须附带 Host 布局；仅 monorepo 启动仍依赖系统 `node` 与仓库布局。
@@ -197,7 +200,8 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
 | `src/preload.ts` | 沙箱 preload，暴露 `window.dshDesktop` 壳层 API |
 | `src/shell-bridge.ts` | preload 桥的主进程 IPC 处理 |
-| `src/external-url.ts` | `openExternal` 的 http(s) 白名单 |
+| `src/external-url.ts` | `openExternal` 的 http(s) + 可选主机白名单 |
+| `src/shell-pages.ts` | 品牌化加载／错误页 HTML；首次欢迎脚本；`describeHostLaunchError` |
 | `src/resolve-repo-root.ts` | 从包路径定位 monorepo 根目录 |
 | `src/smoke-host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
 

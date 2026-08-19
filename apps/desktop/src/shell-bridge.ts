@@ -36,7 +36,9 @@ export function registerShellBridgeHandlers(): void {
 
   ipcMain.handle(IPC_OPEN_EXTERNAL, async (_event, url: unknown): Promise<void> => {
     if (!isAllowedExternalUrl(url)) {
-      throw new Error('dsh-desktop: openExternal only allows http: or https: URLs')
+      throw new Error(
+        'dsh-desktop: openExternal rejected URL (http(s) only; optional DSH_DESKTOP_OPEN_EXTERNAL_HOSTS host allowlist)',
+      )
     }
     await shell.openExternal(url)
   })
