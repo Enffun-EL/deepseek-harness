@@ -145,7 +145,7 @@ pnpm --filter @deepseek-ai/dsh-desktop run dist:linux
 
 ### 限制（当前 MVP）
 
-- 完全离线 Host（自带运行时闭包 + 便携 Node）**延后**；打包应用在能发现 Host 根且系统 Node 可用时启动。
+- 产品打包会向 resources/host 暂存 portable Node + pnpm deploy 的 Host 运行时；打包应用在能发现 Host 根且系统 Node 可用时启动。
 - 代码签名、公证与自动更新 feed 发布属发布流水线职责。
 - 不保证在单一 OS 上交叉构建全部目标；优先各平台原生 CI runner。
 

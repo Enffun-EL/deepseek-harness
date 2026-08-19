@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Pure helpers for detecting a missing system Node binary and Chinese product copy.
  * @module @deepseek-ai/dsh-desktop/missing-node
  */
 
-/** Chinese product message when system Node cannot be spawned. */
+/** Chinese product message when no Node binary can be spawned. */
 export const MISSING_NODE_MESSAGE_ZH =
-  '未找到可用的 Node.js。DSH Desktop 需要系统安装 Node.js（^22.19 或 >=24）才能启动本地 Host。请安装 Node 并确保 `node` 在 PATH 中，或设置环境变量 NODE / npm_node_execpath 指向 Node 可执行文件。'
+  '未找到可用的 Node.js。正式安装包应自带 portable Node；若缺失请重新安装 DSH Desktop。开发模式请安装系统 Node.js（^22.19 或 >=24），确保 `node` 在 PATH 中，或设置 NODE / npm_node_execpath。'
 
 /**
  * True when an error looks like the OS could not find the Node executable.

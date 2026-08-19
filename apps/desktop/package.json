@@ -27,7 +27,8 @@
     "dist": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml",
     "dist:win": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --win nsis portable",
     "dist:mac": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --mac dmg",
-    "dist:linux": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --linux AppImage"
+    "dist:linux": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --linux AppImage",
+    "dist:dir": "pnpm run pack"
   },
   "dependencies": {
     "electron-updater": "^6.6.2",

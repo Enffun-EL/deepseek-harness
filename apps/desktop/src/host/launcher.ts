@@ -1,14 +1,14 @@
-﻿import { existsSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
 /** How the desktop shell should spawn the local `dsh web` Host. */
 export interface HostLaunchSpec {
-  /** Node binary (not Electron's `process.execPath`). */
+  /** Node binary (bundled portable Node preferred; never Electron). */
   command: string
   /** argv after the command. */
   args: string[]
-  /** Working directory for the Host (monorepo root or staged host root). */
+  /** Working directory for the Host process. */
   cwd: string
 }
 
@@ -16,26 +16,50 @@ export interface HostLaunchSpec {
 const WEB_ARGS = ['web', '--host', '127.0.0.1', '--port', '0'] as const
 
 /**
- * Build the Host launch command for a Host root (monorepo checkout or staged host-dist).
+ * Resolve a portable Node binary bundled under a Host root (`node/…`).
+ * @param hostRoot - packaged resources/host or host-dist root
+ * @returns absolute path, or null when absent
+ */
+export function resolveBundledNodePath(hostRoot: string): string | null {
+  if (process.platform === 'win32') {
+    const candidate = path.join(hostRoot, 'node', 'node.exe')
+    return existsSync(candidate) ? candidate : null
+  }
+  const candidate = path.join(hostRoot, 'node', 'bin', 'node')
+  return existsSync(candidate) ? candidate : null
+}
+
+/**
+ * Build the Host launch command for a Host root.
  *
- * Preference order:
- * 1. Packaged `run-host.mjs` (staged host-dist / resources/host)
- * 2. Built CLI `apps/cli/lib/bin.js`
- * 3. Source CLI via tsx when root `node_modules` exists
+ * Preference:
+ * 1. `run-host.mjs` (packaged product entry; uses bundled Node + runtime/)
+ * 2. Deployed product runtime `runtime/lib/bin.js`
+ * 3. Built monorepo CLI `apps/cli/lib/bin.js`
+ * 4. Source CLI via tsx when root `node_modules` exists
  *
- * Bare git worktrees without lib/bin.js and without node_modules fail fast.
- *
- * @param hostRoot - Host root (monorepo root or packaged resources/host)
- * @param nodeCommand - Node executable that can load the CLI
- * @returns spawn spec for `dsh web --host 127.0.0.1 --port 0`
+ * @param hostRoot - Host root (monorepo, host-dist, or resources/host)
+ * @param nodeCommand - Node executable fallback when no bundled Node exists
  */
 export function resolveHostLaunch(hostRoot: string, nodeCommand: string): HostLaunchSpec {
+  const bundledNode = resolveBundledNodePath(hostRoot)
+  const nodeBin = bundledNode ?? nodeCommand
+
   const runHost = path.join(hostRoot, 'run-host.mjs')
   if (existsSync(runHost)) {
     return {
-      command: nodeCommand,
+      command: nodeBin,
       args: [runHost, ...WEB_ARGS],
       cwd: hostRoot,
+    }
+  }
+
+  const deployedBin = path.join(hostRoot, 'runtime', 'lib', 'bin.js')
+  if (existsSync(deployedBin)) {
+    return {
+      command: nodeBin,
+      args: [deployedBin, ...WEB_ARGS],
+      cwd: path.join(hostRoot, 'runtime'),
     }
   }
 
@@ -45,7 +69,7 @@ export function resolveHostLaunch(hostRoot: string, nodeCommand: string): HostLa
 
   if (existsSync(builtBin)) {
     return {
-      command: nodeCommand,
+      command: nodeBin,
       args: [builtBin, ...WEB_ARGS],
       cwd: hostRoot,
     }
@@ -53,27 +77,28 @@ export function resolveHostLaunch(hostRoot: string, nodeCommand: string): HostLa
 
   if (!existsSync(sourceBin)) {
     throw new Error(
-      `dsh-desktop: neither packaged run-host.mjs, built CLI (${builtBin}), nor source CLI (${sourceBin}) exists; run pnpm install && pnpm run build in the monorepo, pack with ensure-host-dist, or set DSH_DESKTOP_HOST_ROOT`,
+      `dsh-desktop: Host root ${hostRoot} has no run-host.mjs, runtime/lib/bin.js, or apps/cli bin. ` +
+        'Pack with product runtime (ensure-host-dist) or set DSH_DESKTOP_HOST_ROOT to a built monorepo.',
     )
   }
 
   if (!hasInstallGraph) {
     throw new Error(
-      `dsh-desktop: Host root ${hostRoot} has source CLI but no node_modules and no apps/cli/lib/bin.js. ` +
-        'Git worktrees are not a runnable Host by themselves. Set DSH_DESKTOP_HOST_ROOT to the main checkout with build artifacts, or run pnpm install && pnpm run build there.',
+      `dsh-desktop: Host root ${hostRoot} has source CLI but no node_modules and no built runtime. ` +
+        'Git worktrees are not a runnable Host. Use the main checkout or a product installer build.',
     )
   }
 
   return {
-    command: nodeCommand,
+    command: nodeBin,
     args: ['--import', 'tsx/esm', sourceBin, ...WEB_ARGS],
     cwd: hostRoot,
   }
 }
 
 /**
- * Resolve a system Node binary. Electron's `process.execPath` cannot run the CLI.
- * @returns absolute or PATH-resolved node command
+ * Resolve a system/dev Node binary when no portable Node is bundled.
+ * Electron's `process.execPath` is never returned.
  */
 export function resolveNodeCommand(): string {
   const fromEnv = process.env.NODE

@@ -1,8 +1,8 @@
 # electron-builder configuration for @deepseek-ai/dsh-desktop (v24.x).
 # Pinned below v25+ so the workspace supply-chain gate does not pull
 # @electron/rebuild → git:@electron/node-gyp (blocked exotic subdependency).
-# Builds the Electron shell + optional staged Host under resources/host
-# (ensure-host-dist). Full offline Host is deferred — see README "Packaging".
+# Builds the Electron shell + staged Host runtime under resources/host
+# (ensure-host-dist product mode: portable Node + pnpm-deployed dsh closure).
 
 appId: ai.deepseek.dsh.desktop
 productName: DSH Desktop
@@ -24,9 +24,8 @@ files:
   - '!host-dist/**'
   - '!build/**'
 
-# Staged Host tree from ensure-host-dist (CLI/web artifacts + run-host.mjs when
-# monorepo build outputs exist; otherwise a placeholder directory). Copied next
-# to the app as resources/host; resolveHostRoot prefers it when valid.
+# Product Host runtime from ensure-host-dist (portable Node + deployed dsh
+# closure + run-host.mjs). Copied as resources/host; resolveHostRoot prefers it.
 extraResources:
   - from: host-dist
     to: host

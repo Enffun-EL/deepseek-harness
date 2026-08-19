@@ -145,7 +145,7 @@ When monorepo CLI artifacts are missing at pack time, `ensure-host-dist` still w
 
 ### Limitations (current MVP)
 
-- Full offline Host (vendored runtime + portable Node) is **deferred**; packaged apps boot when a Host root is discoverable and system Node is available as above.
+- Product pack stages portable Node + pnpm-deployed Host runtime under resources/host; packaged apps boot when a Host root is discoverable and system Node is available as above.
 - Code signing, notarization, and auto-update feed publishing are release-pipeline concerns.
 - Cross-building every target on one OS is not guaranteed; prefer native CI runners per platform.
 

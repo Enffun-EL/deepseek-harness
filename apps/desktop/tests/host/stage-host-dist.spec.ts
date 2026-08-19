@@ -65,12 +65,19 @@ describe('stageHostDist', () => {
     const hostDist = path.join(makeTempDir('dsh-desktop-'), 'host-dist')
     temps.push(path.dirname(hostDist))
 
-    const result = stageHostDist({ hostDist, monorepoRoot: mono, clean: true })
+    const result = stageHostDist({
+      hostDist,
+      monorepoRoot: mono,
+      clean: true,
+      productRuntime: false,
+    })
     expect(result.staged).toBe(true)
     expect(result.manifest.mode).toBe('staged-artifacts')
     expect(result.manifest.hasCliBin).toBe(true)
     expect(result.manifest.hasWebDist).toBe(true)
     expect(result.manifest.hasCliConfig).toBe(true)
+    expect(result.manifest.hasRuntimeDeploy).toBe(false)
+    expect(result.manifest.hasPortableNode).toBe(false)
     expect(result.manifest.monorepoRoot).toBe(path.resolve(mono))
 
     expect(existsSync(path.join(hostDist, 'apps', 'cli', 'lib', 'bin.js'))).toBe(true)
@@ -82,13 +89,15 @@ describe('stageHostDist', () => {
     const manifest = JSON.parse(readFileSync(path.join(hostDist, HOST_MANIFEST_NAME), 'utf8')) as {
       mode: string
       monorepoRoot: string
+      version: number
     }
     expect(manifest.mode).toBe('staged-artifacts')
+    expect(manifest.version).toBe(2)
     expect(manifest.monorepoRoot).toBe(path.resolve(mono))
 
     const runner = readFileSync(path.join(hostDist, RUN_HOST_NAME), 'utf8')
     expect(runner).toContain('host-manifest.json')
-    expect(runner).toContain('apps')
+    expect(runner).toContain('runtime')
     expect(runner).toContain('未找到可用的 Node.js')
   })
 
@@ -97,7 +106,12 @@ describe('stageHostDist', () => {
     const hostDist = makeTempDir('dsh-host-dist-')
     temps.push(hostDist)
 
-    const result = stageHostDist({ hostDist, monorepoRoot: mono, clean: true })
+    const result = stageHostDist({
+      hostDist,
+      monorepoRoot: mono,
+      clean: true,
+      productRuntime: false,
+    })
     expect(result.staged).toBe(true)
     expect(result.manifest.hasWebDist).toBe(false)
     expect(existsSync(path.join(hostDist, 'apps', 'cli', 'lib', 'bin.js'))).toBe(true)
