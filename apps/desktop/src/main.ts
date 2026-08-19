@@ -2,7 +2,8 @@
  * Electron main process for DSH Desktop (MVP-A).
  *
  * Owns: single-instance lock, Host child lifecycle, BrowserWindow loading the
- * loopback Web UI. Does not own agent loop, tools, or client business UI.
+ * loopback Web UI, branded shell status pages, and a one-time first-run strip.
+ * Does not own agent loop, tools, or client business UI.
  * @module @deepseek-ai/dsh-desktop/main
  */
 
@@ -11,10 +12,22 @@ import path from 'node:path'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
 import { resolveRepoRoot } from './resolve-repo-root.js'
+import {
+  isFirstLaunch,
+  markFirstLaunchCompleted,
+} from './first-run-state.js'
+import {
+  buildFirstRunWelcomeScript,
+  buildShellPageDataUrl,
+  classifyHostStartError,
+  SHELL_RETRY_URL,
+} from './shell-pages.js'
 
 let mainWindow: BrowserWindow | null = null
 let host: RunningHost | null = null
 let starting = false
+/** Whether the current profile has not yet completed a successful Host load. */
+let pendingFirstRunWelcome = false
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -48,36 +61,67 @@ if (!gotLock) {
 }
 
 /**
- * Create the shell window, start Host, navigate to the readiness URL.
+ * Create the shell window (once), start Host, navigate to the readiness URL.
  */
 async function boot(): Promise<void> {
   if (starting) return
   starting = true
 
-  mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 840,
-    minWidth: 900,
-    minHeight: 600,
-    title: 'DSH Desktop',
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  })
+  const userDataPath = app.getPath('userData')
+  pendingFirstRunWelcome = isFirstLaunch(userDataPath)
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  if (mainWindow === null) {
+    mainWindow = new BrowserWindow({
+      width: 1280,
+      height: 840,
+      minWidth: 900,
+      minHeight: 600,
+      title: 'DSH Desktop',
+      webPreferences: {
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+      },
+    })
 
-  await mainWindow.loadURL(loadingDataUrl('正在启动本地 Host…'))
+    mainWindow.on('closed', () => {
+      mainWindow = null
+    })
+
+    // Retry from branded error pages (data: URL → custom scheme).
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      if (url !== SHELL_RETRY_URL) return
+      event.preventDefault()
+      void retryBoot()
+    })
+
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      if (url === SHELL_RETRY_URL) {
+        void retryBoot()
+      }
+      return { action: 'deny' }
+    })
+  }
+
+  await mainWindow.loadURL(
+    buildShellPageDataUrl({
+      kind: 'loading',
+      isFirstLaunch: pendingFirstRunWelcome,
+    }),
+  )
 
   try {
+    // Stop a previous Host before relaunch (retry path).
+    if (host !== null) {
+      const previous = host
+      host = null
+      await previous.stop()
+    }
+
     const repoRoot = resolveRepoRoot()
     const nodeCommand = resolveNodeCommand()
     const launch = resolveHostLaunch(repoRoot, nodeCommand)
-    const dshHome = path.join(app.getPath('userData'), 'dsh-home')
+    const dshHome = path.join(userDataPath, 'dsh-home')
 
     host = await startHost({
       launch,
@@ -100,49 +144,51 @@ async function boot(): Promise<void> {
     }
 
     await mainWindow.loadURL(host.url)
+
+    if (pendingFirstRunWelcome && mainWindow !== null) {
+      try {
+        await mainWindow.webContents.executeJavaScript(buildFirstRunWelcomeScript(), true)
+        markFirstLaunchCompleted(userDataPath)
+        pendingFirstRunWelcome = false
+      } catch (error) {
+        // Welcome strip is non-blocking; keep first-run flag so a later boot can retry.
+        console.warn(
+          'dsh-desktop: first-run welcome strip failed',
+          error instanceof Error ? error.message : error,
+        )
+      }
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+    const kind = classifyHostStartError(message)
     console.error(message)
     if (mainWindow !== null) {
-      await mainWindow.loadURL(loadingDataUrl(escapeHtml(message), true))
+      await mainWindow.loadURL(
+        buildShellPageDataUrl({
+          kind,
+          detail: message,
+          showRetry: true,
+        }),
+      )
     }
-    dialog.showErrorBox('DSH Desktop 启动失败', message)
+    dialog.showErrorBox(kindTitle(kind), message)
   } finally {
     starting = false
   }
 }
 
 /**
- * Minimal status page shown before the Host URL is known (or on failure).
- * @param message - status or error text
- * @param isError - style as error when true
+ * Stop any in-flight start and re-run {@link boot} from an error page retry.
  */
-function loadingDataUrl(message: string, isError = false): string {
-  const color = isError ? '#b91c1c' : '#0f172a'
-  const html = `<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <title>DSH Desktop</title>
-  <style>
-    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: #f8fafc; color: ${color}; }
-    main { min-height: 100%; display: grid; place-items: center; padding: 2rem; box-sizing: border-box; }
-    pre { white-space: pre-wrap; word-break: break-word; max-width: 48rem; line-height: 1.5; }
-  </style>
-</head>
-<body><main><pre>${message}</pre></main></body>
-</html>`
-  return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`
+async function retryBoot(): Promise<void> {
+  if (starting) return
+  await boot()
 }
 
 /**
- * Escape text embedded into the loading HTML.
- * @param value - raw message
+ * Dialog title for a classified host failure.
+ * @param kind - timeout or generic failure
  */
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
+function kindTitle(kind: 'timeout' | 'failure'): string {
+  return kind === 'timeout' ? 'DSH Desktop 启动超时' : 'DSH Desktop 启动失败'
 }

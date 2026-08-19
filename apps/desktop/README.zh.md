@@ -22,11 +22,21 @@ pnpm desktop
 
 `pnpm desktop` 会构建本包并启动 Electron。Host 的 `DSH_HOME` 落在 Electron `userData` 下的 `dsh-home`，避免与开发者 CLI 的 home 互相覆盖。
 
+## 首次启动与壳层状态页
+
+本地 Host 启动期间，主进程展示品牌化中文**加载页**（data URL）。Host **失败**或**就绪超时**时展示对应错误页，并提供**重试**（停止旧子进程后重新 boot）。页面由 `src/shell-pages.ts` 中的纯函数生成（可单测；不开启 `nodeIntegration`）。
+
+每个配置档案**首次**成功加载 Host Web UI 后，壳层会在页面顶部注入一条简短**欢迎状态条**，不阻断操作并自动消失。完成标记写入 Electron `userData` 下的 `desktop-shell-state.json`（字段 `hasCompletedFirstLaunch`）。之后启动不再显示。状态缺失或损坏视为未完成。
+
+壳层窗口安全不变量保持不变：`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。
+
 ## 布局
 
 | 路径 | 职责 |
 |---|---|
-| `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host |
+| `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、首次欢迎条 |
+| `src/shell-pages.ts` | 加载／超时／失败页的纯 HTML 构建 |
+| `src/first-run-state.ts` | 在 userData 读写 `hasCompletedFirstLaunch` |
 | `src/host-supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程 |
 | `src/host-launcher.ts` | 解析构建产物／源码两种 `dsh` 启动参数 |
 | `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
