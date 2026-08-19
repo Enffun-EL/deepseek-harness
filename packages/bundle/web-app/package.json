@@ -55,8 +55,6 @@
     "@deepseek-ai/dsh-client-ui-agent-preset": "workspace:^",
     "@deepseek-ai/dsh-client-ui-commands": "workspace:^",
     "@deepseek-ai/dsh-client-ui-command-palette": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-command-palette": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-command-palette": "workspace:^",
     "@deepseek-ai/dsh-client-ui-plugin-market": "workspace:^",
     "@deepseek-ai/dsh-client-ui-conversation": "workspace:^",
     "@deepseek-ai/dsh-client-ui-cordis": "workspace:^",

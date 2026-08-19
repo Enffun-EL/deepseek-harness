@@ -201,7 +201,6 @@
       "@deepseek-ai/dsh-client-ui-input-trigger": ["./packages/client/ui-input-trigger/src"],
       "@deepseek-ai/dsh-client-ui-commands": ["./packages/client/ui-commands/src"],
       "@deepseek-ai/dsh-client-ui-command-palette": ["./packages/client/ui-command-palette/src"],
-      "@deepseek-ai/dsh-client-ui-command-palette": ["./packages/client/ui-command-palette/src"],
       "@deepseek-ai/dsh-client-ui-model-selection": ["./packages/client/ui-model-selection/src"],
       "@deepseek-ai/dsh-client-ui-goal": ["./packages/client/ui-goal/src"],
       "@deepseek-ai/dsh-client-ui-home": ["./packages/client/ui-home/src"],

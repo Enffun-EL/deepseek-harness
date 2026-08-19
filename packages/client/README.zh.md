@@ -30,7 +30,6 @@ dsh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-trajectory/`](ui-trajectory/README.md) | 提供 agent（智能体）活动的其他视图。 |
 | [`ui-commands/`](ui-commands/README.md) | 提供会话感知的命令发现与分发。 |
 | [`ui-command-palette/`](ui-command-palette/README.md) | 提供覆盖 shell 操作的全局 Ctrl+K 命令面板。 |
-| [`ui-command-palette/`](ui-command-palette/README.md) | 提供覆盖 shell 操作的全局 Ctrl+K 命令面板。 |
 | [`ui-input-trigger/`](ui-input-trigger/README.md) | 协调内联命令和引用建议。 |
 | [`ui-skill/`](ui-skill/README.md) | 向内联建议添加 skill（技能）引用。 |
 | [`ui-subagent/`](ui-subagent/README.md) | 提供 subagent（子 agent）导航、子级 transcript（文本记录）的状态和内联引用。 |
