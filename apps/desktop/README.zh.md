@@ -211,6 +211,7 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/shell-pages.ts` | 品牌化加载／错误页 HTML；首次欢迎脚本；`describeHostLaunchError` |
 | `src/resolve-repo-root.ts` | 从包路径定位 monorepo 根目录 |
 | `src/smoke-host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
+| `src/smoke-electron.ts` | Electron 二进制存在性／`--version` 冒烟（不打开窗口） |
 
 ## 无界面 Host 冒烟
 
@@ -230,7 +231,17 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 
 脚本会构建本包，按与 Electron 主进程相同的方式启动 Host（`resolveRepoRoot` + `resolveHostLaunch` + `startHost`），等待 `dsh web:` 就绪 URL，对该 URL 发 `GET`（期望 HTTP 200），停止 Host，成功退出码 `0`、失败 `1`。临时 `DSH_HOME` 放在系统临时目录，避免污染开发者 CLI home。
 
-若要接近生产式 Host（已构建 CLI + Web 前端），先在仓库根目录执行 `pnpm run build`。没有构建产物时，冒烟会与桌面开发一样回退到经 `tsx` 的源码 CLI。
+若要接近生产式 Host（已构建 CLI + Web 前端），先在仓库根目录执行 `pnpm run build`。没有构建产物时，冒烟会与桌面开发一样回退到经 `tsx` 的源码 CLI。CI 门禁使用该源码回退路径，因此不要求完整 monorepo 构建。
+
+## Electron 二进制冒烟
+
+确认 `electron` 包二进制已在磁盘上且能响应 `--version`。不打开窗口，也不启动 Host。
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
+```
+
+退出码：`0` 成功，`1` 二进制存在但执行失败，`2` 二进制缺失（常见于 postinstall 下载失败）。CI 仅对退出码 `2` 软失败；二进制损坏仍会使任务失败。
 
 ## 本包不做
 
@@ -239,41 +250,63 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 - 业务 UI（位于 `packages/client/*`）
 - IDE 编辑器、云端多租户、VS Code 扩展
 
-## CI 发布
+## CI
 
-GitHub Actions 工作流：[`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml)。
+桌面相关有两条工作流：
 
-### 触发条件
+| 工作流 | 文件 | 作用 |
+|---|---|---|
+| **Desktop Smoke** | [`.github/workflows/desktop-smoke.yml`](../../.github/workflows/desktop-smoke.yml) | PR／推送路径过滤门禁 |
+| **Release (Desktop)** | [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml) | 标签／手动发布构建 + 相同门禁 + 产物上传 |
+
+### Desktop Smoke（PR／master）
+
+**触发：** 触及 `apps/desktop/**`、桌面工作流文件或 workspace 锁文件的 pull request 与推送到 `master`；也可 **workflow_dispatch**。
+
+**矩阵：** **windows-latest** 与 **ubuntu-latest**（必过），**macos-latest**（`continue-on-error`）。
+
+**步骤：**
+
+1. Checkout，配置 pnpm + Node 24，执行 `pnpm install --frozen-lockfile`
+2. `pnpm --filter @deepseek-ai/dsh-desktop run build`
+3. `pnpm --filter @deepseek-ai/dsh-desktop test`
+4. `pnpm --filter @deepseek-ai/dsh-desktop run smoke:host`（无 `apps/cli/lib` 时经 `tsx` 走源码 CLI）
+5. `pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron`（仅当退出码为 `2`／二进制缺失时软失败）
+
+### Release (Desktop)
+
+**触发条件：**
 
 | 事件 | 时机 |
 |---|---|
 | 推送标签 | 匹配 `desktop-v*` 的标签（例如 `desktop-v0.1.0`） |
 | 手动 | Actions → **Release (Desktop)** → **Run workflow** |
 
-### 工作流当前会做什么
+**工作流当前会做什么：**
 
-1. Checkout，配置 pnpm + Node 24，执行 `pnpm install --frozen-lockfile`
-2. `pnpm --filter @deepseek-ai/dsh-desktop run build`
-3. `pnpm --filter @deepseek-ai/dsh-desktop test`
-4. 将 `apps/desktop/lib/**` 与 `apps/desktop/package.json` 上传为运行产物
+1. 与 Desktop Smoke 相同的 install／build／单测／`smoke:host`／`smoke:electron` 序列
+2. 将 `apps/desktop/lib/**` 与 `apps/desktop/package.json` 上传为运行产物
 
 矩阵：**windows-latest**（必过）与 **macos-latest**（在打包／签名就绪前使用 `continue-on-error`）。
 
 ### 发布清单（维护者）
 
-1. 将桌面相关改动合入集成分支，并在本地确认包测试通过。
+1. 将桌面相关改动合入集成分支；确认 **Desktop Smoke**（或本地单测 + 冒烟）为绿色。
 2. 创建并推送附注标签：`git tag -a desktop-vX.Y.Z -m "desktop vX.Y.Z"`，再 `git push origin desktop-vX.Y.Z`。
 3. 打开该标签对应的 **Release (Desktop)** 运行记录；确认 Windows 为绿色（macOS 仍可能是实验性的）。
 4. 从该次运行下载上传的产物。当前仅为编译后的主进程 JS，不是面向最终用户的安装包。
-5. **TODO：** 当 `apps/desktop` 下具备 `electron-builder`（或等价）配置后，扩展工作流中的打包步骤，并在同一标签运行中发布已签名的安装包。
+5. **TODO：** 扩展发布工作流中的打包步骤，运行 `electron-builder`，并在同一标签运行中发布已签名安装包。
 
 ### 当前 CI 范围之外
 
-- 完整 monorepo 的 `pnpm run build`（Host／前端；桌面包单测不依赖）
-- electron-builder 安装包、代码签名、Apple 公证、自动更新通道
+- 每次桌面门禁都做完整 monorepo 的 `pnpm run build`（Host／前端；Host 冒烟使用源码 CLI 回退）
+- 作为必过项的 electron-builder 安装包产物、代码签名、Apple 公证、自动更新通道
+- 完整 Electron GUI／BrowserWindow 集成测试
 
 ```sh
 pnpm --filter @deepseek-ai/dsh-desktop test
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
 ```
 
-单元测试只覆盖启动／URL 解析等纯逻辑。Host 就绪检查通过手动（或可选 CI）冒烟 `smoke:host` / `desktop:smoke` 完成。
+单元测试只覆盖启动／URL 解析等纯逻辑。Host 就绪与 Electron 二进制存在性由 CI 通过 `smoke:host` 与 `smoke:electron` 门禁。

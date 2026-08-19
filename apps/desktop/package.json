@@ -20,6 +20,7 @@
     "dev": "pnpm run build && electron .",
     "start": "electron .",
     "smoke:host": "pnpm run build && node lib/smoke-host.js",
+    "smoke:electron": "pnpm run build && node lib/smoke-electron.js",
     "test": "vitest run --config vitest.config.ts",
     "ensure-host-dist": "node ./scripts/ensure-host-dist.mjs",
     "pack": "pnpm run build && pnpm run ensure-host-dist && electron-builder --config electron-builder.yml --dir",

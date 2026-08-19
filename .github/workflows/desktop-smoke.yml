@@ -1,32 +1,37 @@
-# Build and test DSH Desktop artifacts for tagged desktop releases.
+# PR/push gate for DSH Desktop: unit tests + Host readiness smoke + Electron binary smoke.
 #
-# Triggers on desktop-v* tags and manual workflow_dispatch. Produces the
-# compiled Electron main-process output under apps/desktop/lib. Full OS
-# installers (electron-builder notarization / code signing) are not wired
-# as a required gate yet — see TODO markers below and apps/desktop/README.md.
-#
-# Gates: unit tests, headless Host readiness (`smoke:host`), and Electron
-# binary presence (`smoke:electron`; soft-fail only when the binary is missing).
-name: Release (Desktop)
+# Path-filtered so ordinary harness PRs do not pay desktop runner cost. Host smoke
+# uses the source CLI via tsx (same fallback as desktop dev) and does not require a
+# full monorepo `pnpm run build`. Electron binary download failures soft-fail only;
+# a present binary that fails `--version` still fails the job.
+name: Desktop Smoke
 
 'on':
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-smoke.yml'
+      - '.github/workflows/desktop-release.yml'
+      - 'apps/desktop/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   push:
-    tags:
-      - 'desktop-v*'
+    branches: [master]
+    paths:
+      - '.github/workflows/desktop-smoke.yml'
+      - '.github/workflows/desktop-release.yml'
+      - 'apps/desktop/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
   workflow_dispatch:
-    inputs:
-      ref_note:
-        description: Optional note recorded in the run summary (does not change the checked-out ref)
-        required: false
-        type: string
-        default: ''
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   PRIMARY_NODE_VERSION: '24'
@@ -34,15 +39,17 @@ env:
   DSH_TELEMETRY_DISABLED: '1'
 
 jobs:
-  desktop:
-    name: desktop / ${{ matrix.os }}
-    # macOS is best-effort until installer packaging and Apple signing land.
+  desktop-smoke:
+    name: desktop smoke / ${{ matrix.os }}
+    # macOS is best-effort until packaging/signing and runner capacity settle.
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
+            experimental: false
+          - os: ubuntu-latest
             experimental: false
           - os: macos-latest
             experimental: true
@@ -71,8 +78,8 @@ jobs:
           $storePath = & pnpm store path --silent
           Add-Content -Path $env:GITHUB_ENV -Value "DSH_PNPM_STORE_PATH=$storePath"
 
-      - name: Configure pnpm store path (macOS)
-        if: runner.os == 'macOS'
+      - name: Configure pnpm store path (Unix)
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           store_root="$HOME/.local/share/pnpm/store"
@@ -96,12 +103,13 @@ jobs:
       - name: Test desktop package
         run: pnpm --filter @deepseek-ai/dsh-desktop test
 
-      # Source-CLI Host path (tsx). Full monorepo build is intentionally skipped
-      # on the release gate for speed; smoke:host falls back like desktop dev.
+      # Source-CLI Host path (tsx). Full monorepo build is intentionally skipped:
+      # smoke:host falls back the same way as desktop dev when apps/cli/lib is absent.
       - name: Smoke host readiness
         run: pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 
       # Exit 2 = Electron binary missing (download/postinstall gap) → warning only.
+      # Any other non-zero fails the job when the binary is present but broken.
       - name: Smoke electron binary
         shell: bash
         run: |
@@ -118,26 +126,3 @@ jobs:
           fi
           echo "smoke:electron failed with exit code $code"
           exit "$code"
-
-      # TODO(desktop-installer): Wire electron-builder packaging + artifact upload
-      # for signed installers when the release checklist and secrets land, e.g.:
-      #   pnpm --filter @deepseek-ai/dsh-desktop run dist
-      # Prefer uploading installer outputs (NSIS/DMG/etc.) in addition to lib/.
-      - name: Record packaging status
-        shell: bash
-        run: |
-          echo "electron-builder config exists under apps/desktop; installer packaging is not a required release gate yet."
-          echo "Uploading compiled main-process output (apps/desktop/lib)."
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.ref_note }}" ]; then
-            echo "Dispatch note: ${{ inputs.ref_note }}"
-          fi
-
-      - name: Upload desktop build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dsh-desktop-${{ matrix.os }}-${{ github.ref_name }}
-          path: |
-            apps/desktop/lib/**
-            apps/desktop/package.json
-          if-no-files-found: error
-          retention-days: 14
