@@ -16,7 +16,8 @@ export interface ResolveHostRootOptions {
 }
 
 /**
- * True when `dir` can supply a `dsh` CLI for `dsh web` (built bin, source bin, or monorepo leaf).
+ * True when `dir` looks like a Host / monorepo leaf the shell can target.
+ * Prefer {@link hasBuiltCliBin} when choosing among several candidates.
  * @param dir - candidate Host root
  */
 export function isHostRoot(dir: string): boolean {
@@ -29,12 +30,22 @@ export function isHostRoot(dir: string): boolean {
 }
 
 /**
+ * True when `dir` has a built CLI entry (`apps/cli/lib/bin.js`).
+ * Worktrees often have sources but no `lib/` or install graph; those must not win over a built checkout.
+ * @param dir - candidate Host root
+ */
+export function hasBuiltCliBin(dir: string): boolean {
+  return existsSync(path.join(dir, 'apps', 'cli', 'lib', 'bin.js'))
+}
+
+/**
  * Resolve the Host root the shell spawns `dsh web` from.
  *
  * Order:
  * 1. `DSH_DESKTOP_HOST_ROOT` when set and valid
  * 2. Packaged `resources/host` (`extraResources`) when `resourcesPath` is provided
- * 3. Walk parents for a monorepo root (`pnpm-workspace.yaml` + `apps/cli`)
+ * 3. Walk parents for monorepo roots; prefer one with built `apps/cli/lib/bin.js`,
+ *    then one that also has a root `node_modules` (real install), else the nearest marker
  *
  * Full Host bundling inside the installer is deferred; packaged builds either ship a
  * prepared `resources/host` tree or require `DSH_DESKTOP_HOST_ROOT` / a monorepo checkout.
@@ -64,19 +75,35 @@ export function resolveHostRoot(options: ResolveHostRootOptions = {}): string {
   }
 
   const startDir = options.startDir ?? path.dirname(fileURLToPath(import.meta.url))
+  const candidates: string[] = []
   let dir = startDir
   for (;;) {
     if (isHostRoot(dir) && existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
-      return dir
+      candidates.push(dir)
     }
     const parent = path.dirname(dir)
-    if (parent === dir) {
-      throw new Error(
-        'dsh-desktop: could not locate Host root. Dev: open a monorepo checkout. Packaged: set DSH_DESKTOP_HOST_ROOT or ship resources/host (see apps/desktop README).',
-      )
-    }
+    if (parent === dir) break
     dir = parent
   }
+
+  if (candidates.length === 0) {
+    throw new Error(
+      'dsh-desktop: could not locate Host root. Dev: open a monorepo checkout with built apps/cli (pnpm run build). Packaged: set DSH_DESKTOP_HOST_ROOT or ship resources/host (see apps/desktop README). Git worktrees without lib/bin.js are not enough.',
+    )
+  }
+
+  const withBuiltBin = candidates.find(hasBuiltCliBin)
+  if (withBuiltBin !== undefined) return withBuiltBin
+
+  const withNodeModules = candidates.find(candidate => existsSync(path.join(candidate, 'node_modules')))
+  if (withNodeModules !== undefined) return withNodeModules
+
+  // Last resort: nearest monorepo markers (may still fail at launch if deps/lib missing).
+  const fallback = candidates[0]
+  if (fallback === undefined) {
+    throw new Error('dsh-desktop: could not locate Host root after candidate scan.')
+  }
+  return fallback
 }
 
 /**

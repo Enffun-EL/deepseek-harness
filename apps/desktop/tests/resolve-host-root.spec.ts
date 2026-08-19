@@ -95,6 +95,29 @@ describe('resolveHostRoot', () => {
     expect(resolved).toBe(root)
   })
 
+  it('prefers an ancestor with built CLI bin over a nearer source-only worktree', () => {
+    const main = makeTemp()
+    writeFileSync(path.join(main, 'pnpm-workspace.yaml'), 'packages: []\n')
+    const mainBin = path.join(main, 'apps', 'cli', 'lib')
+    mkdirSync(mainBin, { recursive: true })
+    writeFileSync(path.join(mainBin, 'bin.js'), '// built\n')
+
+    // Simulate a git worktree nested under / beside main without built lib.
+    const worktree = path.join(main, 'desktop-worktrees', 'feature')
+    mkdirSync(path.join(worktree, 'apps', 'cli', 'src'), { recursive: true })
+    writeFileSync(path.join(worktree, 'pnpm-workspace.yaml'), 'packages: []\n')
+    writeFileSync(path.join(worktree, 'apps', 'cli', 'src', 'bin.ts'), '// source only\n')
+    const nested = path.join(worktree, 'apps', 'desktop', 'lib')
+    mkdirSync(nested, { recursive: true })
+
+    const resolved = resolveHostRoot({
+      startDir: nested,
+      env: {},
+      resourcesPath: null,
+    })
+    expect(resolved).toBe(main)
+  })
+
   it('throws a packaging-aware error when nothing matches', () => {
     const empty = makeTemp()
     expect(() =>

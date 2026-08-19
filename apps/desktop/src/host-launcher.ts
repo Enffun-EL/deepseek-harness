@@ -14,7 +14,9 @@ export interface HostLaunchSpec {
 
 /**
  * Build the Host launch command for the monorepo checkout.
- * Prefers the built CLI bin; falls back to the source launcher via tsx.
+ * Prefers the built CLI bin. Source+tsx fallback requires a root `node_modules`
+ * install graph; bare git worktrees without deps fail with a clear error instead
+ * of spawning and dying on missing `commander`.
  * @param repoRoot - monorepo root
  * @param nodeCommand - Node executable that can load the CLI (not Electron's process.execPath)
  * @returns spawn spec for `dsh web --host 127.0.0.1 --port 0`
@@ -23,6 +25,7 @@ export function resolveHostLaunch(repoRoot: string, nodeCommand: string): HostLa
   const builtBin = path.join(repoRoot, 'apps', 'cli', 'lib', 'bin.js')
   const sourceBin = path.join(repoRoot, 'apps', 'cli', 'src', 'bin.ts')
   const webArgs = ['web', '--host', '127.0.0.1', '--port', '0'] as const
+  const hasInstallGraph = existsSync(path.join(repoRoot, 'node_modules'))
 
   if (existsSync(builtBin)) {
     return {
@@ -34,7 +37,14 @@ export function resolveHostLaunch(repoRoot: string, nodeCommand: string): HostLa
 
   if (!existsSync(sourceBin)) {
     throw new Error(
-      `dsh-desktop: neither built CLI (${builtBin}) nor source CLI (${sourceBin}) exists; run pnpm install in the monorepo`,
+      `dsh-desktop: neither built CLI (${builtBin}) nor source CLI (${sourceBin}) exists; run pnpm install && pnpm run build in the monorepo (or set DSH_DESKTOP_HOST_ROOT to a built checkout)`,
+    )
+  }
+
+  if (!hasInstallGraph) {
+    throw new Error(
+      `dsh-desktop: Host root ${repoRoot} has source CLI but no node_modules and no apps/cli/lib/bin.js. ` +
+        'Git worktrees are not a runnable Host by themselves. Set DSH_DESKTOP_HOST_ROOT to the main checkout with build artifacts, or run pnpm install && pnpm run build there.',
     )
   }
 

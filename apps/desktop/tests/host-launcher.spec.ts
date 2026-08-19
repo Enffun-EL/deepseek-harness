@@ -27,11 +27,12 @@ describe('resolveHostLaunch', () => {
     expect(launch.args.slice(1)).toEqual(['web', '--host', '127.0.0.1', '--port', '0'])
   })
 
-  it('falls back to the source CLI via tsx when lib is missing', () => {
+  it('falls back to the source CLI via tsx when lib is missing but node_modules exists', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'dsh-desktop-'))
     temps.push(root)
     const srcDir = path.join(root, 'apps', 'cli', 'src')
     mkdirSync(srcDir, { recursive: true })
+    mkdirSync(path.join(root, 'node_modules'), { recursive: true })
     writeFileSync(path.join(srcDir, 'bin.ts'), '// stub\n')
 
     const launch = resolveHostLaunch(root, 'node')
@@ -41,5 +42,15 @@ describe('resolveHostLaunch', () => {
       path.join(srcDir, 'bin.ts'),
     ])
     expect(launch.args.slice(3)).toEqual(['web', '--host', '127.0.0.1', '--port', '0'])
+  })
+
+  it('refuses a source-only tree without node_modules (bare worktree)', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'dsh-desktop-'))
+    temps.push(root)
+    const srcDir = path.join(root, 'apps', 'cli', 'src')
+    mkdirSync(srcDir, { recursive: true })
+    writeFileSync(path.join(srcDir, 'bin.ts'), '// stub\n')
+
+    expect(() => resolveHostLaunch(root, 'node')).toThrow(/worktrees|node_modules|DSH_DESKTOP_HOST_ROOT/i)
   })
 })

@@ -213,6 +213,8 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/smoke-host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
 | `src/smoke-electron.ts` | Electron 二进制存在性／`--version` 冒烟（不打开窗口） |
 
+| `scripts/smoke-electron.mjs` | 真实 Electron 主进程启动冒烟 |
+
 ## 无界面 Host 冒烟
 
 需要快速确认桌面 Host 启动路径能拉起并提供 HTTP、又不想打开 Electron 时使用。**不需要** `DEEPSEEK_API_KEY`。
@@ -242,6 +244,22 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
 ```
 
 退出码：`0` 成功，`1` 二进制存在但执行失败，`2` 二进制缺失（常见于 postinstall 下载失败）。CI 仅对退出码 `2` 软失败；二进制损坏仍会使任务失败。
+
+## Electron 主进程冒烟
+
+单元测试不会加载 Electron 主进程。用此门禁在打包前捕获主进程加载崩溃（例如对 CJS 的 `electron-updater` 使用 named import）：
+
+```sh
+pnpm run desktop:smoke:electron
+```
+
+或：
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
+```
+
+脚本在缺少 `lib/main.js` 时会先构建本包，再用真实 Electron 二进制启动本包并监视 stdout/stderr。**成功：** 出现 `dsh web: http://…` Host 就绪行，或无崩溃的 `[auto-update]` feed／start-check 日志（主进程已加载）。**失败（退出码 1）：** `App threw an error`、`Named export`、`Uncaught Exception` 等模式。**跳过（退出码 2）：** `DSH_DESKTOP_SMOKE_ELECTRON=0`，或无法安装／找到 Electron 二进制。默认超时约 75s（`DSH_DESKTOP_SMOKE_ELECTRON_MS`）。结束时会杀掉 Electron 与 Host 子进程。若二进制缺失，会尝试运行 `electron/install.js`（尊重 `HTTP(S)_PROXY`，并将 `ELECTRON_MIRROR` 默认指向 npmmirror）。
 
 ## 本包不做
 

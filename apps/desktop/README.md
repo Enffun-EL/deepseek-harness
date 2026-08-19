@@ -213,6 +213,8 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/smoke-host.ts` | Headless Host readiness smoke (no Electron GUI) |
 | `src/smoke-electron.ts` | Electron binary presence/`--version` smoke (no window) |
 
+| `scripts/smoke-electron.mjs` | Real Electron main-process startup smoke |
+
 ## Headless Host smoke
 
 Use this when you need a quick check that the desktop Host launch path boots and serves HTTP without opening Electron. It does **not** require `DEEPSEEK_API_KEY`.
@@ -242,6 +244,22 @@ pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
 ```
 
 Exit codes: `0` success, `1` binary present but failed, `2` binary missing (typical postinstall download gap). CI soft-fails only exit `2`; a broken binary still fails the job.
+
+## Electron main-process smoke
+
+Unit tests do not load Electron main. Use this gate to catch main-process load crashes (for example a CJS `electron-updater` named-import failure) before packaging:
+
+```sh
+pnpm run desktop:smoke:electron
+```
+
+Or:
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron
+```
+
+The script builds this package when `lib/main.js` is missing, launches the real Electron binary against the package, and watches stdout/stderr. **Success:** `dsh web: http://…` Host readiness, or an `[auto-update]` feed/start-check log without a crash (main loaded). **Failure (exit 1):** patterns such as `App threw an error`, `Named export`, or `Uncaught Exception`. **Skip (exit 2):** `DSH_DESKTOP_SMOKE_ELECTRON=0`, or the Electron binary cannot be installed/found. Timeout defaults to ~75s (`DSH_DESKTOP_SMOKE_ELECTRON_MS`). On finish it kills Electron and Host children. If the binary is missing it tries `electron/install.js` (honors `HTTP(S)_PROXY` and defaults `ELECTRON_MIRROR` to npmmirror).
 
 ## Out of scope (this package)
 

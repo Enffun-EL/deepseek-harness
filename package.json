@@ -137,6 +137,7 @@
     "dsh": "node --import tsx/esm apps/cli/src/bin.ts",
     "desktop": "pnpm --filter @deepseek-ai/dsh-desktop run build && pnpm --filter @deepseek-ai/dsh-desktop exec electron .",
     "desktop:smoke": "pnpm --filter @deepseek-ai/dsh-desktop run smoke:host",
+    "desktop:smoke:electron": "pnpm --filter @deepseek-ai/dsh-desktop run smoke:electron",
     "demo:code-mode": "node scripts/demo-code-mode.mjs",
     "demo:cordis": "node scripts/demo-cordis.mjs",
     "demo:acp": "node --import tsx packages/examples/acp-demo/src/bin.ts --config examples/acp-agent/cordis.yml",
