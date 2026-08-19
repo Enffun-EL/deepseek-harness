@@ -29,6 +29,8 @@ The browser side of the dsh web GUI: shell boot, browser-host communication, sha
 | [`ui-task-side-rail/`](ui-task-side-rail/README.md) | Provides pure task side-rail atoms: Git tools, goal card, and progress checklist. |
 | [`ui-trajectory/`](ui-trajectory/README.md) | Presents alternate views of agent activity. |
 | [`ui-commands/`](ui-commands/README.md) | Provides session-aware command discovery and dispatch. |
+| [`ui-command-palette/`](ui-command-palette/README.md) | Provides the global Ctrl+K command palette over shell actions. |
+| [`ui-command-palette/`](ui-command-palette/README.md) | Provides the global Ctrl+K command palette over shell actions. |
 | [`ui-input-trigger/`](ui-input-trigger/README.md) | Coordinates inline command and reference suggestions. |
 | [`ui-skill/`](ui-skill/README.md) | Adds skill references to inline suggestions. |
 | [`ui-subagent/`](ui-subagent/README.md) | Provides subagent navigation, child transcript states, and inline references. |

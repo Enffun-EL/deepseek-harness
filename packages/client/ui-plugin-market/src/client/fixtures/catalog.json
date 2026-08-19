@@ -1,0 +1,74 @@
+{
+  "installed": [
+    {
+      "id": "fixture.local-notes",
+      "name": "本地笔记",
+      "summary": "已安装占位：会话侧边笔记扩展。",
+      "category": "productivity",
+      "version": "0.1.0"
+    },
+    {
+      "id": "fixture.symbol-jump",
+      "name": "符号跳转",
+      "summary": "已安装占位：快速打开工作区符号。",
+      "category": "developer-tools",
+      "version": "0.2.1"
+    }
+  ],
+  "sections": [
+    {
+      "id": "developer-tools",
+      "label": "开发者工具",
+      "plugins": [
+        {
+          "id": "fixture.symbol-jump",
+          "name": "符号跳转",
+          "summary": "按名称搜索并跳转到工作区符号。",
+          "category": "developer-tools",
+          "version": "0.2.1"
+        },
+        {
+          "id": "fixture.diff-lens",
+          "name": "差异透镜",
+          "summary": "在时间线旁预览未提交差异。",
+          "category": "developer-tools",
+          "version": "0.3.0"
+        },
+        {
+          "id": "fixture.http-probe",
+          "name": "HTTP 探针",
+          "summary": "对本地服务发起只读健康检查。",
+          "category": "developer-tools",
+          "version": "0.1.4"
+        }
+      ]
+    },
+    {
+      "id": "productivity",
+      "label": "效率工具",
+      "plugins": [
+        {
+          "id": "fixture.local-notes",
+          "name": "本地笔记",
+          "summary": "为当前任务附加私有笔记。",
+          "category": "productivity",
+          "version": "0.1.0"
+        },
+        {
+          "id": "fixture.standup-card",
+          "name": "站会卡片",
+          "summary": "从最近任务生成站会摘要草稿。",
+          "category": "productivity",
+          "version": "0.4.2"
+        },
+        {
+          "id": "fixture.focus-timer",
+          "name": "专注计时",
+          "summary": "任务页顶部的轻量番茄钟。",
+          "category": "productivity",
+          "version": "1.0.0"
+        }
+      ]
+    }
+  ]
+}

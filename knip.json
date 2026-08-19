@@ -194,6 +194,30 @@
         "tests/**/*.tsx"
       ]
     },
+    "packages/client/ui-command-palette": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
+        "packages/client/ui-plugin-market": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "tests/**/*.ts",
+        "tests/**/*.tsx"
+      ]
+    },
     "packages/client/ui-directory-picker-browse": {
       "entry": [
         "tests/**/*.spec.tsx"
