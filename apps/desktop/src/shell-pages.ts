@@ -36,6 +36,23 @@ export function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;')
 }
 
+/** Max executeJavaScript attempts for the first-run welcome strip. */
+export const FIRST_RUN_WELCOME_MAX_ATTEMPTS = 3
+
+/** Branded Chinese copy when system Node cannot be spawned (ENOENT / missing `node`). */
+export const MISSING_NODE_DETAIL =
+  '未找到系统 Node.js（node）。DSH Desktop 需要在 PATH 上可用的 node 才能启动本地 Host。请安装 Node.js 22 或更高版本，确认终端中可执行 `node -v`，然后点击重试。'
+
+/** Result of {@link describeHostLaunchError}. */
+export interface HostLaunchErrorDescription {
+  /** Branded shell page kind. */
+  kind: Exclude<ShellPageKind, 'loading'>
+  /** User-visible detail (Chinese product copy when classified specially). */
+  detail: string
+  /** True when the failure is a missing system Node binary. */
+  missingNode: boolean
+}
+
 /**
  * Classify a Host start error for the matching branded page.
  * @param message - error message from the supervisor or launcher
@@ -44,6 +61,64 @@ export function escapeHtml(value: string): string {
 export function classifyHostStartError(message: string): Exclude<ShellPageKind, 'loading'> {
   if (/timed out/i.test(message)) return 'timeout'
   return 'failure'
+}
+
+/**
+ * Detect spawn failures that mean system `node` is missing from PATH.
+ * Matches Node's `spawn node ENOENT` errors and common message forms.
+ * @param error - thrown value from supervisor / child_process
+ * @returns whether product copy should explain a missing Node install
+ */
+export function isMissingNodeLaunchError(error: unknown): boolean {
+  if (error === null || error === undefined) return false
+  const record =
+    typeof error === 'object' ? (error as { code?: unknown; message?: unknown; path?: unknown; syscall?: unknown }) : null
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : record && typeof record.message === 'string'
+          ? record.message
+          : String(error)
+  const code = record && record.code !== undefined ? String(record.code) : ''
+  const pathVal = record && typeof record.path === 'string' ? record.path : ''
+  const syscall = record && typeof record.syscall === 'string' ? record.syscall : ''
+
+  if (code === 'ENOENT') {
+    // spawn('node') → path often "node"; message "spawn node ENOENT"
+    if (/(^|[\\/])node(\.exe)?$/i.test(pathVal)) return true
+    if (/spawn\s+.*\bnode(\.exe)?\b/i.test(message)) return true
+    if (/^node(\.exe)?$/i.test(pathVal) || pathVal.length === 0) {
+      if (/spawn/i.test(syscall) || /spawn/i.test(message)) return true
+    }
+  }
+
+  if (/ENOENT/i.test(message) && /\bnode(\.exe)?\b/i.test(message)) return true
+  if (/not recognized as an internal or external command/i.test(message) && /\bnode\b/i.test(message)) {
+    return true
+  }
+  if (/command not found/i.test(message) && /\bnode\b/i.test(message)) return true
+  return false
+}
+
+/**
+ * Map a Host launch/start error to branded page kind and Chinese-friendly detail.
+ * Missing system Node becomes product copy instead of an opaque spawn stack.
+ * @param error - thrown failure from launcher, supervisor, or spawn
+ * @returns kind + detail for shell pages / dialogs
+ */
+export function describeHostLaunchError(error: unknown): HostLaunchErrorDescription {
+  if (isMissingNodeLaunchError(error)) {
+    return {
+      kind: 'failure',
+      detail: MISSING_NODE_DETAIL,
+      missingNode: true,
+    }
+  }
+  const raw = error instanceof Error ? error.message : String(error)
+  const kind = classifyHostStartError(raw)
+  return { kind, detail: raw, missingNode: false }
 }
 
 /**
@@ -218,14 +293,18 @@ export function buildShellPageDataUrl(options: ShellPageOptions): string {
 /**
  * Script body injected after the Host UI loads on first launch.
  * Inserts a non-blocking top status strip that auto-dismisses.
- * @returns IIFE source (no surrounding script tags)
+ * Returns a boolean so main can tell a no-document race from success.
+ * @returns IIFE source (no surrounding script tags); evaluates to `true` when the strip is present
  */
 export function buildFirstRunWelcomeScript(): string {
   const message = '欢迎使用 DSH Desktop。本地 Host 已就绪，可开始对话与任务。'
   const safe = JSON.stringify(message)
   return `(() => {
   try {
-    if (document.getElementById('dsh-desktop-first-run')) return;
+    const existing = document.getElementById('dsh-desktop-first-run');
+    if (existing) return true;
+    const root = document.documentElement || document.body;
+    if (!root) return false;
     const bar = document.createElement('div');
     bar.id = 'dsh-desktop-first-run';
     bar.setAttribute('role', 'status');
@@ -244,14 +323,16 @@ export function buildFirstRunWelcomeScript(): string {
       'box-shadow:0 2px 10px rgba(15,23,42,.28)',
       'pointer-events:none',
     ].join(';');
-    (document.documentElement || document.body).appendChild(bar);
+    root.appendChild(bar);
     window.setTimeout(() => {
       bar.style.transition = 'opacity .45s ease';
       bar.style.opacity = '0';
       window.setTimeout(() => bar.remove(), 480);
     }, 6500);
+    return true;
   } catch (_) {
     /* Host document may be mid-navigation; strip is best-effort. */
+    return false;
   }
 })();`
 }

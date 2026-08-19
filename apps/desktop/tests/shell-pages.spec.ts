@@ -4,7 +4,11 @@ import {
   buildShellPageDataUrl,
   buildShellPageHtml,
   classifyHostStartError,
+  describeHostLaunchError,
   escapeHtml,
+  FIRST_RUN_WELCOME_MAX_ATTEMPTS,
+  isMissingNodeLaunchError,
+  MISSING_NODE_DETAIL,
   SHELL_RETRY_URL,
 } from '../src/shell-pages.js'
 
@@ -23,6 +27,50 @@ describe('classifyHostStartError', () => {
 
   it('treats other messages as failure', () => {
     expect(classifyHostStartError('Host exited before readiness')).toBe('failure')
+  })
+})
+
+describe('describeHostLaunchError / isMissingNodeLaunchError', () => {
+  it('maps spawn node ENOENT to branded Chinese missing-node copy', () => {
+    const err = Object.assign(new Error('spawn node ENOENT'), {
+      code: 'ENOENT',
+      path: 'node',
+      syscall: 'spawn',
+    })
+    expect(isMissingNodeLaunchError(err)).toBe(true)
+    const described = describeHostLaunchError(err)
+    expect(described.missingNode).toBe(true)
+    expect(described.kind).toBe('failure')
+    expect(described.detail).toBe(MISSING_NODE_DETAIL)
+    expect(described.detail).toContain('Node.js')
+  })
+
+  it('maps Windows-style missing node messages', () => {
+    expect(
+      isMissingNodeLaunchError(
+        new Error("'node' is not recognized as an internal or external command"),
+      ),
+    ).toBe(true)
+  })
+
+  it('does not treat unrelated ENOENT as missing node', () => {
+    const err = Object.assign(new Error('spawn /missing/cli ENOENT'), {
+      code: 'ENOENT',
+      path: '/missing/cli',
+      syscall: 'spawn',
+    })
+    expect(isMissingNodeLaunchError(err)).toBe(false)
+    const described = describeHostLaunchError(err)
+    expect(described.missingNode).toBe(false)
+    expect(described.detail).toContain('spawn /missing/cli ENOENT')
+  })
+
+  it('keeps timeout classification for readiness waits', () => {
+    const described = describeHostLaunchError(
+      new Error('dsh-desktop: timed out after 120000ms waiting for Host URL'),
+    )
+    expect(described.kind).toBe('timeout')
+    expect(described.missingNode).toBe(false)
   })
 })
 
@@ -86,12 +134,15 @@ describe('buildShellPageDataUrl', () => {
 })
 
 describe('buildFirstRunWelcomeScript', () => {
-  it('emits a self-invoking script with Chinese welcome copy', () => {
+  it('emits a self-invoking script with Chinese welcome copy and success boolean', () => {
     const script = buildFirstRunWelcomeScript()
     expect(script.startsWith('(() => {')).toBe(true)
     expect(script).toContain('dsh-desktop-first-run')
     expect(script).toContain('欢迎使用 DSH Desktop')
+    expect(script).toContain('return true')
+    expect(script).toContain('return false')
     expect(script).not.toContain('nodeIntegration')
     expect(script).not.toContain('require(')
+    expect(FIRST_RUN_WELCOME_MAX_ATTEMPTS).toBe(3)
   })
 })
