@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-20-remote-workspace-wizard-ui-scaffold.md
+2026-08-20-remote-workspace-wizard-ui-scaffold.md: 6287d7071a07ed7ed33b9b62f87ef9ffe0087772
+2026-08-20-remote-workspace-wizard-ui-scaffold.zh.md: 6927f5eb6233052d09458298415f265b6206b001
