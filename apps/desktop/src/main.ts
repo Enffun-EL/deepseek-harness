@@ -15,6 +15,10 @@ import {
   setupAutoUpdate,
   type AutoUpdateController,
 } from './auto-update.js'
+import {
+  createElectronUpdateConsentDialogs,
+  createUpdateConsentHandler,
+} from './update-consent.js'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
 import { resolveHostRoot } from './resolve-host-root.js'
@@ -115,19 +119,39 @@ async function boot(): Promise<void> {
 
   ensureMainWindow()
 
-  // Skeleton: check on start when packaged; manual check via controller later.
-  // Never auto-downloads or silent-installs without consent (see auto-update.ts).
+  // Check on start when packaged; download/install only after dialog consent.
+  // Never auto-downloads or silent-installs (see auto-update.ts + update-consent).
   if (autoUpdate === null) {
+    const logUpdate = (message: string): void => {
+      console.log(`[auto-update] ${message}`)
+    }
+    // Controller is assigned before the consent handler runs (handler only reacts
+    // to later state changes from the updater / user answers).
+    const controllerHolder: { current: AutoUpdateController | null } = { current: null }
+    const onConsentState = createUpdateConsentHandler({
+      actions: {
+        downloadUpdate: async () => {
+          await controllerHolder.current?.downloadUpdate()
+        },
+        requestInstallDownloadedUpdate: () => {
+          controllerHolder.current?.requestInstallDownloadedUpdate()
+        },
+      },
+      dialogs: createElectronUpdateConsentDialogs(() => mainWindow),
+      log: logUpdate,
+    })
     autoUpdate = setupAutoUpdate({
       getMainWindow: () => mainWindow,
       onStateChange: (state) => {
-        console.log(
-          `[auto-update] phase=${state.phase}` +
+        logUpdate(
+          `phase=${state.phase}` +
             (state.availableVersion !== null ? ` available=${state.availableVersion}` : '') +
             (state.errorMessage !== null ? ` error=${state.errorMessage}` : ''),
         )
+        onConsentState(state)
       },
     })
+    controllerHolder.current = autoUpdate
   }
 
   if (mainWindow === null) {

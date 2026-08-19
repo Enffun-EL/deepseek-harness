@@ -40,9 +40,12 @@ export interface AutoUpdateSetupOptions {
   feed?: UpdateFeedConfig
   /** Override updater instance (tests). */
   updater?: AppUpdater
-  /** Optional window for future dialog hooks; unused in the skeleton beyond focus logs. */
+  /** Optional main window accessor (consent dialogs parent via main). */
   getMainWindow?: () => BrowserWindow | null
-  /** Called whenever pure state advances. */
+  /**
+   * Called whenever pure state advances.
+   * Main wires download / install consent dialogs here (see `update-consent.ts`).
+   */
   onStateChange?: (state: UpdateState) => void
   /** Logger sink; defaults to `console`. */
   log?: (message: string) => void
