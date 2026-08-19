@@ -1,7 +1,13 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
+import process from 'node:process'
 import { parseHostWebUrl } from './parse-host-url.js'
 import type { HostLaunchSpec } from './host-launcher.js'
+import { HostLogRing } from './host-log-ring.js'
+import {
+  DEFAULT_HOST_READY_TIMEOUT_MS,
+  resolveHostReadyTimeoutMs,
+} from './host-ready-timeout.js'
 
 /** Options for supervising one Host child. */
 export interface HostSupervisorOptions {
@@ -9,10 +15,23 @@ export interface HostSupervisorOptions {
   launch: HostLaunchSpec
   /** Extra environment merged over `process.env`. */
   env?: NodeJS.ProcessEnv
-  /** Max time to wait for the readiness URL line. */
+  /**
+   * Max time to wait for the readiness URL line.
+   * Defaults to `DSH_DESKTOP_HOST_READY_MS` or {@link DEFAULT_HOST_READY_TIMEOUT_MS}.
+   */
   readyTimeoutMs?: number
   /** Invoked for every stdout/stderr line (logging / UI status). */
   onLogLine?: (stream: 'stdout' | 'stderr', line: string) => void
+  /**
+   * Optional ring that receives every Host log line (for crash dialogs).
+   * When omitted, a private ring still bounds the readiness error tail.
+   */
+  logRing?: HostLogRing
+  /**
+   * Invoked once when the child exits after readiness was observed.
+   * Not called for intentional stops via {@link RunningHost.stop}.
+   */
+  onUnexpectedExit?: (info: { code: number | null; signal: NodeJS.Signals | null }) => void
 }
 
 /** A running Host plus its discovered loopback URL. */
@@ -21,8 +40,10 @@ export interface RunningHost {
   process: ChildProcess
   /** Local UI origin, e.g. `http://127.0.0.1:49152`. */
   url: string
-  /** Stop the child (SIGTERM then SIGKILL). */
+  /** Stop the child (graceful then forceful; Windows may use taskkill tree). */
   stop: () => Promise<void>
+  /** Bounded Host log ring shared with the supervisor. */
+  logRing: HostLogRing
 }
 
 /**
@@ -31,16 +52,21 @@ export interface RunningHost {
  * @returns running host with URL
  */
 export async function startHost(options: HostSupervisorOptions): Promise<RunningHost> {
-  const readyTimeoutMs = options.readyTimeoutMs ?? 120_000
+  const readyTimeoutMs =
+    options.readyTimeoutMs ?? resolveHostReadyTimeoutMs(process.env, DEFAULT_HOST_READY_TIMEOUT_MS)
+  const logRing = options.logRing ?? new HostLogRing()
   const child = spawn(options.launch.command, options.launch.args, {
     cwd: options.launch.cwd,
     env: { ...process.env, ...options.env },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
+    // Detached false: we own the tree and stop it explicitly.
+    detached: false,
   })
 
   let settled = false
-  let output = ''
+  let intentionalStop = false
+  let reachedReady = false
   let resolveReady: (url: string) => void
   let rejectReady: (error: Error) => void
   const ready = new Promise<string>((resolve, reject) => {
@@ -49,11 +75,12 @@ export async function startHost(options: HostSupervisorOptions): Promise<Running
   })
 
   const consider = (chunk: string): void => {
-    output += chunk
     if (settled) return
-    const url = parseHostWebUrl(output)
+    // Prefer the latest line; fall back to the ring in case the ready line was split.
+    const url = parseHostWebUrl(chunk) ?? parseHostWebUrl(logRing.toText())
     if (url !== null) {
       settled = true
+      reachedReady = true
       resolveReady(url)
     }
   }
@@ -62,6 +89,7 @@ export async function startHost(options: HostSupervisorOptions): Promise<Running
     if (readable === null) return
     const rl = createInterface({ input: readable })
     rl.on('line', (line) => {
+      logRing.push(stream, line)
       options.onLogLine?.(stream, line)
       consider(`${line}\n`)
     })
@@ -82,9 +110,17 @@ export async function startHost(options: HostSupervisorOptions): Promise<Running
       settled = true
       rejectReady(
         new Error(
-          `dsh-desktop: Host exited before readiness (code=${String(code)}, signal=${String(signal)}). Output tail:\n${output.slice(-4000)}`,
+          `dsh-desktop: Host exited before readiness (code=${String(code)}, signal=${String(signal)}). Output tail:\n${logRing.toText().slice(-4000)}`,
         ),
       )
+      return
+    }
+    if (reachedReady && !intentionalStop) {
+      try {
+        options.onUnexpectedExit?.({ code, signal })
+      } catch {
+        // Swallow onUnexpectedExit throws: exit handlers must not reject the child exit path.
+      }
     }
   })
 
@@ -93,7 +129,7 @@ export async function startHost(options: HostSupervisorOptions): Promise<Running
       settled = true
       rejectReady(
         new Error(
-          `dsh-desktop: timed out after ${String(readyTimeoutMs)}ms waiting for Host URL. Output tail:\n${output.slice(-4000)}`,
+          `dsh-desktop: timed out after ${String(readyTimeoutMs)}ms waiting for Host URL. Output tail:\n${logRing.toText().slice(-4000)}`,
         ),
       )
       void stopChild(child)
@@ -106,12 +142,15 @@ export async function startHost(options: HostSupervisorOptions): Promise<Running
     return {
       process: child,
       url,
+      logRing,
       stop: async () => {
+        intentionalStop = true
         await stopChild(child)
       },
     }
   } catch (error) {
     clearTimeout(timer)
+    intentionalStop = true
     await stopChild(child)
     throw error
   }
@@ -119,25 +158,82 @@ export async function startHost(options: HostSupervisorOptions): Promise<Running
 
 /**
  * Terminate a child process tree politely, then forcefully.
+ * On Windows, uses `taskkill /T` so orphaned grandchildren cannot outlive the shell.
  * @param child - spawned Host
  */
 async function stopChild(child: ChildProcess): Promise<void> {
   if (child.exitCode !== null || child.signalCode !== null) return
 
   await new Promise<void>((resolve) => {
-    const forceTimer = setTimeout(() => {
-      if (child.exitCode === null && child.signalCode === null) {
-        child.kill('SIGKILL')
-      }
-    }, 5_000)
+    let settled = false
+    const done = (): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(forceTimer)
+      clearTimeout(treeTimer)
+      resolve()
+    }
 
     child.once('exit', () => {
-      clearTimeout(forceTimer)
-      resolve()
+      done()
     })
 
-    // Windows: SIGTERM maps to TerminateProcess for node children in practice
-    // via child.kill; taskkill is not required for a direct node CLI child.
-    child.kill('SIGTERM')
+    // Windows: SIGTERM on a console-less child often maps to TerminateProcess for
+    // that one PID only. Prefer taskkill tree first so pnpm/node grandchildren die.
+    if (process.platform === 'win32' && typeof child.pid === 'number') {
+      void killWindowsProcessTree(child.pid).catch(() => {
+        // Swallow taskkill spawn failures; SIGTERM/SIGKILL below still run.
+      })
+    }
+
+    try {
+      child.kill('SIGTERM')
+    } catch {
+      // Swallow kill races when the child exited between the live check and kill.
+      done()
+      return
+    }
+
+    const treeTimer = setTimeout(() => {
+      if (child.exitCode !== null || child.signalCode !== null) return
+      if (process.platform === 'win32' && typeof child.pid === 'number') {
+        void killWindowsProcessTree(child.pid, true).catch(() => {
+          // Swallow forced taskkill failures; SIGKILL below still runs.
+        })
+      }
+    }, 2_000)
+
+    const forceTimer = setTimeout(() => {
+      if (child.exitCode !== null || child.signalCode !== null) return
+      try {
+        child.kill('SIGKILL')
+      } catch {
+        // Swallow kill races when the child already exited.
+        done()
+      }
+    }, 5_000)
+  })
+}
+
+/**
+ * Kill a Windows PID and its descendants via `taskkill`.
+ * @param pid - root process id
+ * @param force - pass `/F` for hard kill
+ */
+async function killWindowsProcessTree(pid: number, force = false): Promise<void> {
+  const args = ['/pid', String(pid), '/T']
+  if (force) args.push('/F')
+  await new Promise<void>((resolve) => {
+    const killer = spawn('taskkill', args, {
+      stdio: 'ignore',
+      windowsHide: true,
+    })
+    killer.once('error', () => {
+      // taskkill missing or access denied — caller falls back to child.kill.
+      resolve()
+    })
+    killer.once('exit', () => {
+      resolve()
+    })
   })
 }
