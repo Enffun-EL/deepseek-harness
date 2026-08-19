@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Electron main process for DSH Desktop (MVP-A).
  *
  * Owns: single-instance lock, Host child lifecycle (start / restart / stop),
@@ -17,7 +17,7 @@ import {
 } from './auto-update.js'
 import { startHost, type RunningHost } from './host-supervisor.js'
 import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
-import { resolveRepoRoot } from './resolve-repo-root.js'
+import { resolveHostRoot } from './resolve-host-root.js'
 import { HostLogRing } from './host-log-ring.js'
 import {
   DEFAULT_HOST_RESTART_POLICY,
@@ -206,9 +206,11 @@ async function startManagedHost(): Promise<void> {
     await previous.stop()
   }
 
-  const repoRoot = resolveRepoRoot()
+  const hostRoot = resolveHostRoot({
+    resourcesPath: app.isPackaged ? process.resourcesPath : null,
+  })
   const nodeCommand = resolveNodeCommand()
-  const launch = resolveHostLaunch(repoRoot, nodeCommand)
+  const launch = resolveHostLaunch(hostRoot, nodeCommand)
   const dshHome = path.join(userDataPath, 'dsh-home')
   const readyTimeoutMs = resolveHostReadyTimeoutMs()
 

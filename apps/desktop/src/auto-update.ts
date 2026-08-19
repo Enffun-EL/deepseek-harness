@@ -12,13 +12,12 @@
  */
 
 import { app, type BrowserWindow } from 'electron'
-import {
-  autoUpdater,
-  type AppUpdater,
-  type ProgressInfo,
-  type UpdateInfo,
-} from 'electron-updater'
+// electron-updater is CJS; named ESM imports crash Electron main at load time.
+import electronUpdater from 'electron-updater'
+import type { AppUpdater, ProgressInfo, UpdateInfo } from 'electron-updater'
 import { describeUpdateFeed, resolveUpdateFeed, type UpdateFeedConfig } from './feed-url.js'
+
+const { autoUpdater } = electronUpdater
 import { shouldCheckForUpdatesOnStart } from './update-policy.js'
 import {
   canInstallUpdate,
