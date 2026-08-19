@@ -34,6 +34,16 @@ pnpm run build
 pnpm dsh web
 ```
 
+### Desktop (Electron shell)
+
+[DSH Desktop](apps/desktop/README.md) is the Codex-like desktop entry: an Electron window that supervises local `dsh web` (MVP-A loopback) and reuses the same Host + Web UI. From a repository checkout after `pnpm install`:
+
+```sh
+pnpm desktop
+```
+
+See the [desktop package README](apps/desktop/README.md) for architecture (MVP-A vs MVP-B), security notes, and the design Agent Note. Standalone installers are not in-tree yet.
+
 ## Community and support
 
 - Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).

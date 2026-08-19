@@ -2,15 +2,30 @@
 
 English | [中文](README.zh.md)
 
-Electron shell for **DSH Desktop** (MVP-A). The main process starts a local `dsh web` Host on loopback (`127.0.0.1`, OS-assigned port), waits for the `dsh web:` readiness line, and loads that URL in a `BrowserWindow`. Agent loop, tools, sessions, and chat UI stay in the existing Host + `packages/client/*` stack.
+**DSH Desktop** is the Codex-like desktop shell for DeepSeek Harness: an installable window that supervises a local Host and loads the existing Web UI. Agent loop, tools, sessions, sandbox × approval, and chat UI stay in Host + `packages/client/*`; this package owns only the Electron main process, Host lifecycle, and window.
 
-## Requirements
+## What it is
+
+Product users who prefer a desktop entry get the same local coding-agent experience as `dsh web`, without learning the CLI first. The shell:
+
+- Starts a single Electron window titled **DSH Desktop**
+- Spawns local `dsh web` on loopback and waits for the `dsh web:` readiness line
+- Loads that origin in a sandboxed `BrowserWindow`
+- Stops the Host child on quit and focuses an existing window on a second launch
+
+Business UI is not rewritten here. Packaging installers and auto-update are follow-up features, not part of this package today.
+
+## Install and develop
+
+There is no standalone installer in-tree yet. Run from a monorepo checkout.
+
+### Requirements
 
 - Monorepo dependencies installed (`pnpm install` at the repository root)
-- Built Host/frontend artifacts for a production-like run (`pnpm run build`), **or** a source-capable tree for dev (`pnpm dsh` path via `tsx`)
+- Built Host/frontend artifacts for a production-like run (`pnpm run build`), **or** a source-capable tree for dev (`pnpm dsh` via `tsx`)
 - System `node` on `PATH` (Electron's binary is not used to run the CLI)
 
-## Develop
+### Develop
 
 From the repository root:
 
@@ -21,6 +36,31 @@ pnpm desktop
 ```
 
 `pnpm desktop` builds this package and launches Electron. The Host uses `DSH_HOME` under the Electron `userData` directory (`…/dsh-home`) so desktop state does not clobber a developer CLI home.
+
+### Tests
+
+```sh
+pnpm --filter @deepseek-ai/dsh-desktop test
+```
+
+## Architecture: MVP-A and MVP-B
+
+| Stage | Carriage | Product effect |
+|---|---|---|
+| **MVP-A** (this package) | Loopback HTTP: spawn `dsh web` on `127.0.0.1` with OS-assigned port; parse readiness URL; `BrowserWindow.loadURL` | Reuses Host + client unchanged; first desktop entry with minimal shell code |
+| **MVP-B** (planned) | `file://` renderer + `IpcApiClient` over Electron IPC | No product dependence on `dsh-host-webserver` HTTP carriage; same client stack over a different transport |
+
+MVP-A defaults: Electron (not Tauri) so a Node Cordis Host can be supervised in-tree; desktop `DSH_HOME` under `userData`; renderer with `contextIsolation`, no `nodeIntegration`, and sandbox on.
+
+Design rationale, alternatives, and acceptance criteria live in the [desktop Electron MVP Agent Note](../../.agents/notes/proposed/architecture/2026-08-19-dsh-desktop-electron-mvp.md).
+
+## Security notes
+
+- Bind the Host to **`127.0.0.1` only** until MVP-B removes the loopback HTTP surface.
+- Renderer isolation: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. The shell does not add a second credential model.
+- Host logs are main-process diagnostics; do not intentionally surface secrets in the window.
+- Closing the app stops the Host child so the loopback port does not outlive the product window.
+- Packaged installers must ship a Host layout later; a monorepo-only launch still needs system `node` and repository layout.
 
 ## Layout
 
@@ -35,14 +75,9 @@ pnpm desktop
 ## Out of scope (this package)
 
 - Installers / auto-update (later feature)
-- IPC `file://` carrier (MVP-B; see the desktop architecture Agent Note)
+- IPC `file://` carrier (MVP-B; see the Agent Note above)
 - Business UI (lives under `packages/client/*`)
-
-## Tests
-
-```sh
-pnpm --filter @deepseek-ai/dsh-desktop test
-```
+- IDE editor, cloud multi-tenant, VS Code extension
 
 ## CI release
 
