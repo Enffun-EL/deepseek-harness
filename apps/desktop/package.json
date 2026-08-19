@@ -1,0 +1,31 @@
+{
+  "name": "@deepseek-ai/dsh-desktop",
+  "description": "DSH Desktop shell: Electron window that supervises a local dsh web Host (MVP-A loopback)",
+  "version": "0.1.0-rc.7",
+  "private": true,
+  "type": "module",
+  "main": "lib/main.js",
+  "files": [
+    "lib"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Enffun-EL/deepseek-harness.git",
+    "directory": "apps/desktop"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "pnpm run build && electron .",
+    "start": "electron .",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "tsx": "^4.20.3"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "typescript": "~5.9.2",
+    "vitest": "^3.2.4"
+  }
+}
