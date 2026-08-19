@@ -41,7 +41,7 @@ export const FIRST_RUN_WELCOME_MAX_ATTEMPTS = 3
 
 /** Branded Chinese copy when system Node cannot be spawned (ENOENT / missing `node`). */
 export const MISSING_NODE_DETAIL =
-  '未找到系统 Node.js（node）。DSH Desktop 需要在 PATH 上可用的 node 才能启动本地 Host。请安装 Node.js 22 或更高版本，确认终端中可执行 `node -v`，然后点击重试。'
+  '未找到可用的 Node.js。DSH Desktop 需要系统 PATH 中的 `node` 才能启动本地服务。请安装 Node.js 22 或更高版本，在终端确认 `node -v` 可用，然后点击重试。'
 
 /** Result of {@link describeHostLaunchError}. */
 export interface HostLaunchErrorDescription {
@@ -298,7 +298,7 @@ export function buildShellPageDataUrl(options: ShellPageOptions): string {
  * @returns IIFE source (no surrounding script tags); evaluates to `true` when the strip is present
  */
 export function buildFirstRunWelcomeScript(): string {
-  const message = '欢迎使用 DSH Desktop。本地 Host 已就绪，可开始对话与任务。'
+  const message = '欢迎使用 DSH Desktop。本地服务已就绪，可以开始新建任务或继续对话。'
   const safe = JSON.stringify(message)
   return `(() => {
   try {
@@ -353,27 +353,27 @@ function resolveCopy(options: ShellPageOptions): PageCopy {
     case 'loading':
       if (options.isFirstLaunch === true) {
         return {
-          documentTitle: 'DSH Desktop · 首次启动',
-          headline: '首次启动，正在准备',
-          lede: '正在拉起本地 Host 并加载 Web UI，通常只需片刻。首次启动可能稍慢。',
+          documentTitle: 'DSH Desktop · 欢迎',
+          headline: '正在为你准备 DSH Desktop',
+          lede: '首次启动会拉起本地服务并加载工作界面，通常只需片刻。首次可能稍慢，请稍候。',
         }
       }
       return {
         documentTitle: 'DSH Desktop · 启动中',
-        headline: '正在启动本地 Host',
-        lede: 'DSH Desktop 正在准备 Web UI，请稍候…',
+        headline: '正在启动',
+        lede: '本地服务启动中，工作界面即将就绪…',
       }
     case 'timeout':
       return {
         documentTitle: 'DSH Desktop · 启动超时',
         headline: '启动超时',
-        lede: '本地 Host 在限定时间内未报告就绪。可检查仓库构建产物或源码启动依赖后重试。',
+        lede: '本地服务未能在预期时间内就绪。请确认环境与依赖后重试；开发模式下也可检查构建产物是否完整。',
       }
     case 'failure':
       return {
         documentTitle: 'DSH Desktop · 启动失败',
-        headline: '无法启动本地 Host',
-        lede: '本地 Host 进程未能就绪。请查看下方详情，修复环境后点击重试。',
+        headline: '启动遇到问题',
+        lede: '本地服务未能就绪。请查看下方说明，处理好环境后点击重试。',
       }
     default: {
       const _exhaustive: never = options.kind

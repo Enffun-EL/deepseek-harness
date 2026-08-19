@@ -78,8 +78,8 @@ describe('buildShellPageHtml', () => {
   it('renders first-launch loading copy without a retry control', () => {
     const html = buildShellPageHtml({ kind: 'loading', isFirstLaunch: true })
     expect(html).toContain('lang="zh-CN"')
-    expect(html).toContain('首次启动')
-    expect(html).toContain('正在准备')
+    expect(html).toContain('正在为你准备 DSH Desktop')
+    expect(html).toContain('首次启动会拉起本地服务')
     expect(html).toContain('class="spinner"')
     expect(html).not.toContain(SHELL_RETRY_URL)
     expect(html).toContain('role="status"')
@@ -87,8 +87,9 @@ describe('buildShellPageHtml', () => {
 
   it('renders ordinary loading copy', () => {
     const html = buildShellPageHtml({ kind: 'loading' })
-    expect(html).toContain('正在启动本地 Host')
-    expect(html).not.toContain('首次启动')
+    expect(html).toContain('正在启动')
+    expect(html).toContain('本地服务启动中')
+    expect(html).not.toContain('正在为你准备')
   })
 
   it('renders timeout page with escaped detail and retry', () => {
@@ -111,7 +112,7 @@ describe('buildShellPageHtml', () => {
       detail: 'Host exited',
       showRetry: true,
     })
-    expect(html).toContain('无法启动本地 Host')
+    expect(html).toContain('启动遇到问题')
     expect(html).toContain('Host exited')
     expect(html).toContain('重试')
   })
@@ -139,6 +140,7 @@ describe('buildFirstRunWelcomeScript', () => {
     expect(script.startsWith('(() => {')).toBe(true)
     expect(script).toContain('dsh-desktop-first-run')
     expect(script).toContain('欢迎使用 DSH Desktop')
+    expect(script).toContain('本地服务已就绪')
     expect(script).toContain('return true')
     expect(script).toContain('return false')
     expect(script).not.toContain('nodeIntegration')

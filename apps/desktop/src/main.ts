@@ -5,6 +5,8 @@
  * BrowserWindow loading the loopback Web UI, branded shell status pages, a
  * one-time first-run strip, secure preload shell bridge, and auto-update
  * skeleton. Does not own agent loop, tools, or client business UI.
+ *
+ * Keyboard: leave Ctrl+N / Ctrl+K free for the client (see reserved-accelerators).
  * @module @deepseek-ai/dsh-desktop/main
  */
 
@@ -44,6 +46,12 @@ import {
   FIRST_RUN_WELCOME_MAX_ATTEMPTS,
   SHELL_RETRY_URL,
 } from './shell/pages.js'
+import {
+  noteCustomTitleBarEnvIfIgnored,
+  resolveCustomTitleBarWindowOptions,
+} from './shell/titlebar-options.js'
+// Reserved client chords (Ctrl+N / Ctrl+K): do not bind on Menu / globalShortcut.
+// import { isReservedClientAccelerator } from './shell/reserved-accelerators.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -182,12 +190,17 @@ async function boot(): Promise<void> {
 function ensureMainWindow(): void {
   if (mainWindow !== null) return
 
+  // Optional custom title bar (env DSH_DESKTOP_CUSTOM_TITLEBAR); no-op on Linux.
+  noteCustomTitleBarEnvIfIgnored()
+  const titleBarOptions = resolveCustomTitleBarWindowOptions()
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
     minWidth: 900,
     minHeight: 600,
     title: 'DSH Desktop',
+    ...titleBarOptions,
     webPreferences: {
       preload: PRELOAD_PATH,
       contextIsolation: true,
@@ -469,7 +482,7 @@ async function retryBoot(): Promise<void> {
  * @param kind - timeout or generic failure
  */
 function kindTitle(kind: 'timeout' | 'failure'): string {
-  return kind === 'timeout' ? 'DSH Desktop 启动超时' : 'DSH Desktop 启动失败'
+  return kind === 'timeout' ? 'DSH Desktop · 启动超时' : 'DSH Desktop · 启动遇到问题'
 }
 
 /**

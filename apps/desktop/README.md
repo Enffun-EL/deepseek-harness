@@ -87,6 +87,25 @@ On the first successful Host UI load for a profile, the shell injects a short **
 
 Security invariants for the shell window stay fixed: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
 
+### Reserved client accelerators
+
+The desktop shell must **not** claim these chords on an application `Menu` or `globalShortcut` — they belong to the Host-loaded client (Zcode home parity):
+
+| Shortcut | Client action |
+|---|---|
+| **Ctrl+N** (⌘N) | New task |
+| **Ctrl+K** (⌘K) | Command palette |
+
+Canonical list and collision helper: `src/shell/reserved-accelerators.ts` (`RESERVED_CLIENT_ACCELERATORS`, `isReservedClientAccelerator`). Product anchors: [`docs/zcode-home-interaction-contract.json`](docs/zcode-home-interaction-contract.json).
+
+### Custom title bar (stub)
+
+| Variable | Effect |
+|---|---|
+| `DSH_DESKTOP_CUSTOM_TITLEBAR` | `1` / `true` / `on` enables optional title-bar chrome on **Windows** (`titleBarStyle: hidden` + overlay) and **macOS** (`hiddenInset`). **Linux always keeps the native frame** so a window never loses controls before client-drawn chrome exists. Default (unset): native frame everywhere. |
+
+Helper: `src/shell/titlebar-options.ts`. Window title stays **DSH Desktop**.
+
 ## Packaging (electron-builder)
 
 This package ships an [electron-builder](https://www.electron.build/) **24.x** config (`electron-builder.yml`; 24 avoids a git exotic subdependency blocked by the monorepo supply-chain gate) for:
@@ -166,6 +185,8 @@ When monorepo CLI artifacts are missing at pack time, `ensure-host-dist` still w
 | `src/main.ts` | Electron main: window, single-instance, quit → stop Host, first-run strip |
 | `src/shell/pages.ts` | Pure HTML builders for loading / timeout / failure pages |
 | `src/shell/first-run-state.ts` | Read/write `hasCompletedFirstLaunch` under userData |
+| `src/shell/reserved-accelerators.ts` | Ctrl+N / Ctrl+K reserved for client (docs + collision helper) |
+| `src/shell/titlebar-options.ts` | Optional `DSH_DESKTOP_CUSTOM_TITLEBAR` window chrome (Linux-safe) |
 | `src/host/supervisor.ts` | Spawn Host, parse readiness URL, stop child |
 | `src/host/launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
 | `src/host/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
@@ -226,6 +247,8 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | `src/shell/bridge.ts` | Main-process IPC handlers for the preload bridge |
 | `src/shell/external-url.ts` | http(s) + optional host allowlist for `openExternal` |
 | `src/shell/pages.ts` | Branded loading/error HTML; first-run script; `describeHostLaunchError` |
+| `src/shell/reserved-accelerators.ts` | Ctrl+N / Ctrl+K reserved for client (docs + collision helper) |
+| `src/shell/titlebar-options.ts` | Optional `DSH_DESKTOP_CUSTOM_TITLEBAR` window chrome (Linux-safe) |
 | `src/host/resolve-root.ts` | Locate monorepo root from the packaged path |
 | `src/smoke/host.ts` | Headless Host readiness smoke (no Electron GUI) |
 | `scripts/smoke-electron.mjs` | Electron binary presence/`--version` smoke (no window) |

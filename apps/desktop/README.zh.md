@@ -87,6 +87,25 @@ pnpm desktop
 
 壳层窗口安全不变量保持不变：`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。
 
+### 预留给客户端的快捷键
+
+桌面壳层的应用 `Menu` 或 `globalShortcut` **不得**占用下列组合键——它们属于 Host 加载的客户端（Zcode 主页对等）：
+
+| 快捷键 | 客户端动作 |
+|---|---|
+| **Ctrl+N**（⌘N） | 新建任务 |
+| **Ctrl+K**（⌘K） | 命令面板 |
+
+权威列表与冲突检测：`src/shell/reserved-accelerators.ts`（`RESERVED_CLIENT_ACCELERATORS`、`isReservedClientAccelerator`）。产品锚点：[`docs/zcode-home-interaction-contract.json`](docs/zcode-home-interaction-contract.json)。
+
+### 自定义标题栏（桩）
+
+| 变量 | 作用 |
+|---|---|
+| `DSH_DESKTOP_CUSTOM_TITLEBAR` | `1`／`true`／`on` 时在 **Windows**（`titleBarStyle: hidden` + overlay）与 **macOS**（`hiddenInset`）启用可选标题栏样式。**Linux 始终保留原生边框**，避免在客户端自绘标题栏落地前失去窗口控件。默认（未设置）：各平台原生边框。 |
+
+实现：`src/shell/titlebar-options.ts`。窗口标题仍为 **DSH Desktop**。
+
 ## 打包（electron-builder）
 
 本包提供 [electron-builder](https://www.electron.build/) **24.x** 配置（`electron-builder.yml`；选用 24 是为避开 monorepo 供应链门禁拒绝的 git exotic 子依赖）：
@@ -166,6 +185,8 @@ pnpm --filter @deepseek-ai/dsh-desktop run dist:linux
 | `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、首次欢迎条 |
 | `src/shell/pages.ts` | 加载／超时／失败页的纯 HTML 构建 |
 | `src/shell/first-run-state.ts` | 在 userData 读写 `hasCompletedFirstLaunch` |
+| `src/shell/reserved-accelerators.ts` | 预留 Ctrl+N／Ctrl+K 给客户端（文档 + 冲突检测） |
+| `src/shell/titlebar-options.ts` | 可选 `DSH_DESKTOP_CUSTOM_TITLEBAR` 标题栏样式（Linux 安全） |
 | `src/host/supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程 |
 | `src/host/launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
 | `src/host/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
@@ -226,6 +247,8 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | `src/shell/bridge.ts` | preload 桥的主进程 IPC 处理 |
 | `src/shell/external-url.ts` | `openExternal` 的 http(s) + 可选主机白名单 |
 | `src/shell/pages.ts` | 品牌化加载／错误页 HTML；首次欢迎脚本；`describeHostLaunchError` |
+| `src/shell/reserved-accelerators.ts` | 预留 Ctrl+N／Ctrl+K 给客户端（文档 + 冲突检测） |
+| `src/shell/titlebar-options.ts` | 可选 `DSH_DESKTOP_CUSTOM_TITLEBAR` 标题栏样式（Linux 安全） |
 | `src/host/resolve-root.ts` | 从包路径定位 monorepo 根目录 |
 | `src/smoke/host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
 | `scripts/smoke-electron.mjs` | Electron 二进制存在性／`--version` 冒烟（不打开窗口） |
