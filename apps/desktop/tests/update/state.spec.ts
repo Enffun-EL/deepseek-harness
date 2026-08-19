@@ -3,8 +3,8 @@ import {
   canInstallUpdate,
   createInitialUpdateState,
   reduceUpdateState,
-} from '../src/update-state.js'
-import { shouldCheckForUpdatesOnStart } from '../src/update-policy.js'
+} from '../../src/update/state.js'
+import { shouldCheckForUpdatesOnStart } from '../../src/update/policy.js'
 
 describe('reduceUpdateState', () => {
   it('starts idle for the current app version', () => {

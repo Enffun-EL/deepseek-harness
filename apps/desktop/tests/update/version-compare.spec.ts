@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compareVersions, isNewerVersion } from '../src/version-compare.js'
+import { compareVersions, isNewerVersion } from '../../src/update/version-compare.js'
 
 describe('compareVersions', () => {
   it('orders core versions numerically', () => {

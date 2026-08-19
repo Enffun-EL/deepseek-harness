@@ -12,5 +12,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["src/preload.ts", "src/ipc-channels.json"]
+  "include": ["src/preload.ts", "src/shell/ipc-channels.json"]
 }

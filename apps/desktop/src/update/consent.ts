@@ -8,11 +8,11 @@ import {
   buildDownloadConsentCopy,
   buildInstallConsentCopy,
   type UpdateConsentDialogCopy,
-} from './update-consent-copy.js'
-import type { UpdateConsentDialogs } from './update-consent-handler.js'
+} from './consent-copy.js'
+import type { UpdateConsentDialogs } from './consent-handler.js'
 
-export type { UpdateConsentDialogs } from './update-consent-handler.js'
-export { createUpdateConsentHandler } from './update-consent-handler.js'
+export type { UpdateConsentDialogs } from './consent-handler.js'
+export { createUpdateConsentHandler } from './consent-handler.js'
 
 /**
  * Show a modal Yes/No box from pure {@link UpdateConsentDialogCopy}.

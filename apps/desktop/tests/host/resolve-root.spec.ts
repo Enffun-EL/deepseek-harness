@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { isHostRoot, resolveHostRoot } from '../src/resolve-host-root.js'
+import { isHostRoot, resolveHostRoot } from '../../src/host/resolve-root.js'
 
 const temps: string[] = []
 

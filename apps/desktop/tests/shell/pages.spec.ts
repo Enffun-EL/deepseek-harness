@@ -10,7 +10,7 @@ import {
   isMissingNodeLaunchError,
   MISSING_NODE_DETAIL,
   SHELL_RETRY_URL,
-} from '../src/shell-pages.js'
+} from '../../src/shell/pages.js'
 
 describe('escapeHtml', () => {
   it('escapes markup-significant characters', () => {

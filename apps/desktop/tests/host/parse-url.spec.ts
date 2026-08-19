@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseHostWebUrl } from '../src/parse-host-url.js'
+import { parseHostWebUrl } from '../../src/host/parse-url.js'
 
 describe('parseHostWebUrl', () => {
   it('reads the local URL from a plain readiness line', () => {

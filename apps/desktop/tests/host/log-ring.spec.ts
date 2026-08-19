@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HostLogRing } from '../src/host-log-ring.js'
+import { HostLogRing } from '../../src/host/log-ring.js'
 
 describe('HostLogRing', () => {
   it('retains lines in order and drops the oldest when full', () => {

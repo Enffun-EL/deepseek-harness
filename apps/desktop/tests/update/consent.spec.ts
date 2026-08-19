@@ -2,13 +2,13 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   buildDownloadConsentCopy,
   buildInstallConsentCopy,
-} from '../src/update-consent-copy.js'
-import { createUpdateConsentHandler } from '../src/update-consent-handler.js'
+} from '../../src/update/consent-copy.js'
+import { createUpdateConsentHandler } from '../../src/update/consent-handler.js'
 import {
   createInitialUpdateState,
   reduceUpdateState,
   type UpdateState,
-} from '../src/update-state.js'
+} from '../../src/update/state.js'
 
 describe('update consent copy', () => {
   it('names the remote version in download and install prompts', () => {

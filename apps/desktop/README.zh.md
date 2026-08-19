@@ -79,7 +79,7 @@ pnpm desktop
 
 ## 首次启动与壳层状态页
 
-本地 Host 启动期间，主进程展示品牌化中文**加载页**（data URL）。Host **失败**或**就绪超时**时展示对应错误页，并提供**重试**（停止旧子进程后重新 boot）。页面由 `src/shell-pages.ts` 中的纯函数生成（可单测；不开启 `nodeIntegration`）。
+本地 Host 启动期间，主进程展示品牌化中文**加载页**（data URL）。Host **失败**或**就绪超时**时展示对应错误页，并提供**重试**（停止旧子进程后重新 boot）。页面由 `src/shell/pages.ts` 中的纯函数生成（可单测；不开启 `nodeIntegration`）。
 
 缺少系统 `node`（spawn `ENOENT` / 不在 `PATH`）时，由 `describeHostLaunchError` 归类为品牌化中文说明，而不是不透明堆栈，并同样提供重试。
 
@@ -154,23 +154,23 @@ pnpm --filter @deepseek-ai/dsh-desktop run dist:linux
 | 路径 | 职责 |
 |---|---|
 | `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、自动更新与同意对话框 |
-| `src/auto-update.ts` | electron-updater 接线与需用户同意的控制器 |
-| `src/update-consent.ts` | 下载／安装的 Electron 是／否对话框适配 |
-| `src/update-consent-handler.ts` | 状态 → 提示编排（纯函数，可测） |
-| `src/update-consent-copy.ts` | 对话框标题与正文（纯函数） |
-| `src/feed-url.ts` | Feed URL／GitHub provider 配置（纯函数） |
-| `src/update-policy.ts` | 是否在启动时检查（纯函数） |
-| `src/update-state.ts` | 更新生命周期状态机（纯函数） |
-| `src/version-compare.ts` | 版本比较（纯函数） |
+| `src/update/auto-update.ts` | electron-updater 接线与需用户同意的控制器 |
+| `src/update/consent.ts` | 下载／安装的 Electron 是／否对话框适配 |
+| `src/update/consent-handler.ts` | 状态 → 提示编排（纯函数，可测） |
+| `src/update/consent-copy.ts` | 对话框标题与正文（纯函数） |
+| `src/update/feed-url.ts` | Feed URL／GitHub provider 配置（纯函数） |
+| `src/update/policy.ts` | 是否在启动时检查（纯函数） |
+| `src/update/state.ts` | 更新生命周期状态机（纯函数） |
+| `src/update/version-compare.ts` | 版本比较（纯函数） |
 
 | `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、首次欢迎条 |
-| `src/shell-pages.ts` | 加载／超时／失败页的纯 HTML 构建 |
-| `src/first-run-state.ts` | 在 userData 读写 `hasCompletedFirstLaunch` |
-| `src/host-supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程 |
-| `src/host-launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
-| `src/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
-| `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
-| `src/resolve-host-root.ts` | Host 根：环境变量、打包 `resources/host`、monorepo 上溯 |
+| `src/shell/pages.ts` | 加载／超时／失败页的纯 HTML 构建 |
+| `src/shell/first-run-state.ts` | 在 userData 读写 `hasCompletedFirstLaunch` |
+| `src/host/supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程 |
+| `src/host/launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
+| `src/host/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
+| `src/host/parse-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
+| `src/host/resolve-root.ts` | Host 根：环境变量、打包 `resources/host`、monorepo 上溯 |
 | `electron-builder.yml` | Windows / macOS / Linux 打包目标 |
 | `scripts/ensure-host-dist.mjs` | 在 electron-builder 前暂存 `host-dist/`（产物或占位） |
 | `scripts/stage-host-dist-lib.mjs` | 暂存助手与 `run-host.mjs` 模板（单测覆盖） |
@@ -214,21 +214,21 @@ MVP-A 默认：选用 Electron（而非 Tauri），以便在树内监护 Node Co
 | 路径 | 职责 |
 |---|---|
 | `src/main.ts` | Electron 主进程：窗口、单实例、退出时停止 Host、就绪后重启 |
-| `src/host-supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程树 |
-| `src/host-restart-policy.ts` | 纯函数重启／退避策略 |
-| `src/host-log-ring.ts` | 有界 Host 日志 ring（崩溃上下文） |
-| `src/host-ready-timeout.ts` | 解析 `DSH_DESKTOP_HOST_READY_MS` |
-| `src/host-launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
-| `src/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
-| `src/parse-host-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
+| `src/host/supervisor.ts` | 拉起 Host、解析就绪 URL、停止子进程树 |
+| `src/host/restart-policy.ts` | 纯函数重启／退避策略 |
+| `src/host/log-ring.ts` | 有界 Host 日志 ring（崩溃上下文） |
+| `src/host/ready-timeout.ts` | 解析 `DSH_DESKTOP_HOST_READY_MS` |
+| `src/host/launcher.ts` | 解析打包 `run-host.mjs`／构建产物／源码三种 `dsh` 启动参数 |
+| `src/host/missing-node.ts` | 缺少 Node 的纯检测与中文产品文案 |
+| `src/host/parse-url.ts` | 解析 `dsh web: http://…` 的纯函数 |
 | `src/preload.ts` | 沙箱 preload，暴露 `window.dshDesktop` 壳层 API |
-| `src/ipc-channels.json` | IPC 通道名单一来源；main 以 ESM 导入，preload 打包内联以适配 `sandbox: true` |
-| `src/shell-bridge.ts` | preload 桥的主进程 IPC 处理 |
-| `src/external-url.ts` | `openExternal` 的 http(s) + 可选主机白名单 |
-| `src/shell-pages.ts` | 品牌化加载／错误页 HTML；首次欢迎脚本；`describeHostLaunchError` |
-| `src/resolve-repo-root.ts` | 从包路径定位 monorepo 根目录 |
-| `src/smoke-host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
-| `src/smoke-electron.ts` | Electron 二进制存在性／`--version` 冒烟（不打开窗口） |
+| `src/shell/ipc-channels.json` | IPC 通道名单一来源；main 以 ESM 导入，preload 打包内联以适配 `sandbox: true` |
+| `src/shell/bridge.ts` | preload 桥的主进程 IPC 处理 |
+| `src/shell/external-url.ts` | `openExternal` 的 http(s) + 可选主机白名单 |
+| `src/shell/pages.ts` | 品牌化加载／错误页 HTML；首次欢迎脚本；`describeHostLaunchError` |
+| `src/host/resolve-root.ts` | 从包路径定位 monorepo 根目录 |
+| `src/smoke/host.ts` | 无界面 Host 就绪冒烟（不打开 Electron GUI） |
+| `scripts/smoke-electron.mjs` | Electron 二进制存在性／`--version` 冒烟（不打开窗口） |
 
 | `scripts/smoke-electron.mjs` | 真实 Electron 主进程启动冒烟 |
 
@@ -248,7 +248,7 @@ pnpm run desktop:smoke
 pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 ```
 
-脚本会构建本包，按与 Electron 主进程相同的方式启动 Host（`resolveRepoRoot` + `resolveHostLaunch` + `startHost`），等待 `dsh web:` 就绪 URL，对该 URL 发 `GET`（期望 HTTP 200），停止 Host，成功退出码 `0`、失败 `1`。临时 `DSH_HOME` 放在系统临时目录，避免污染开发者 CLI home。
+脚本会构建本包，按与 Electron 主进程相同的方式启动 Host（`resolveHostRoot` + `resolveHostLaunch` + `startHost`），等待 `dsh web:` 就绪 URL，对该 URL 发 `GET`（期望 HTTP 200），停止 Host，成功退出码 `0`、失败 `1`。临时 `DSH_HOME` 放在系统临时目录，避免污染开发者 CLI home。
 
 若要接近生产式 Host（已构建 CLI + Web 前端），先在仓库根目录执行 `pnpm run build`。没有构建产物时，冒烟会与桌面开发一样回退到经 `tsx` 的源码 CLI。CI 门禁使用该源码回退路径，因此不要求完整 monorepo 构建。
 

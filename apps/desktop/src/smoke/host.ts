@@ -12,9 +12,9 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import process from 'node:process'
 import { pathToFileURL } from 'node:url'
-import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
-import { startHost } from './host-supervisor.js'
-import { resolveRepoRoot } from './resolve-repo-root.js'
+import { resolveHostLaunch, resolveNodeCommand } from '../host/launcher.js'
+import { startHost } from '../host/supervisor.js'
+import { resolveHostRoot } from '../host/resolve-root.js'
 
 const DEFAULT_READY_TIMEOUT_MS = 120_000
 const DEFAULT_HTTP_TIMEOUT_MS = 15_000
@@ -24,7 +24,7 @@ const DEFAULT_HTTP_TIMEOUT_MS = 15_000
  * @returns process exit code (0 success, 1 failure)
  */
 export async function runHostSmoke(): Promise<number> {
-  const repoRoot = resolveRepoRoot()
+  const repoRoot = resolveHostRoot()
   const nodeCommand = resolveNodeCommand()
   const launch = resolveHostLaunch(repoRoot, nodeCommand)
   const dshHome = mkdtempSync(path.join(tmpdir(), 'dsh-desktop-smoke-'))

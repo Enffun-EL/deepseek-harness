@@ -16,10 +16,10 @@
     "directory": "apps/desktop"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json --noEmit && node scripts/build-preload.mjs && node --input-type=module -e \"import { copyFileSync } from 'node:fs'; copyFileSync('src/dsh-desktop.d.ts', 'lib/dsh-desktop.d.ts'); copyFileSync('src/ipc-channels.json', 'lib/ipc-channels.json')\"",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.preload.json --noEmit && node scripts/build-preload.mjs && node --input-type=module -e \"import { copyFileSync, mkdirSync } from 'node:fs'; mkdirSync('lib/shell', { recursive: true }); copyFileSync('src/dsh-desktop.d.ts', 'lib/dsh-desktop.d.ts'); copyFileSync('src/shell/ipc-channels.json', 'lib/shell/ipc-channels.json')\"",
     "dev": "pnpm run build && electron .",
     "start": "electron .",
-    "smoke:host": "pnpm run build && node lib/smoke-host.js",
+    "smoke:host": "pnpm run build && node lib/smoke/host.js",
     "smoke:electron": "node ./scripts/smoke-electron.mjs",
     "test": "vitest run --config vitest.config.ts",
     "ensure-host-dist": "node ./scripts/ensure-host-dist.mjs",

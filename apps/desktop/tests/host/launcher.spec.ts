@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { resolveHostLaunch } from '../src/host-launcher.js'
+import { resolveHostLaunch } from '../../src/host/launcher.js'
 
 const temps: string[] = []
 

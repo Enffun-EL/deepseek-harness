@@ -7,7 +7,7 @@
  * `shell-ipc.ts`.
  */
 
-import type { DshDesktopShellInfo } from './shell-ipc.js'
+import type { DshDesktopShellInfo } from './shell/ipc.js'
 
 /** Renderer-facing desktop shell API exposed by `preload.ts`. */
 export interface DshDesktopApi {

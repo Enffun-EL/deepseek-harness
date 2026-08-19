@@ -3,11 +3,11 @@
  *
  * Exposes a minimal `window.dshDesktop` API via `contextBridge`. No Node
  * integration in the renderer; all privileged work goes through validated
- * main-process IPC handlers in `shell-bridge.ts`.
+ * main-process IPC handlers in `shell/bridge.ts`.
  *
  * Built as a single CommonJS bundle (`scripts/build-preload.mjs`) so Electron
  * can load it under `sandbox: true` without sibling `require()`s. Channel
- * names come from `ipc-channels.json` (shared with `shell-ipc.ts`) and are
+ * names come from `ipc-channels.json` (shared with `shell/ipc.ts`) and are
  * inlined at bundle time.
  *
  * Shell chrome only - not a Host API / ApiClient replacement.
@@ -15,12 +15,12 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron'
-import channelNames from './ipc-channels.json'
+import channelNames from './shell/ipc-channels.json'
 
 const IPC_GET_SHELL_INFO = channelNames.IPC_GET_SHELL_INFO
 const IPC_OPEN_EXTERNAL = channelNames.IPC_OPEN_EXTERNAL
 
-/** Shell info payload from main (`DshDesktopShellInfo` in `shell-ipc.ts`). */
+/** Shell info payload from main (`DshDesktopShellInfo` in `shell/ipc.ts`). */
 interface DshDesktopShellInfo {
   version: string
   platform: string

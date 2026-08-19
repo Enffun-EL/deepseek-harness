@@ -5,7 +5,7 @@ import {
   DEFAULT_UPDATE_FEED,
   describeUpdateFeed,
   resolveUpdateFeed,
-} from '../src/feed-url.js'
+} from '../../src/update/feed-url.js'
 
 describe('buildGithubReleasesFeed', () => {
   it('builds a github provider config', () => {

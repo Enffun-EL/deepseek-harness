@@ -8,7 +8,7 @@ import {
   markFirstLaunchCompleted,
   readShellState,
   shellStatePath,
-} from '../src/first-run-state.js'
+} from '../../src/shell/first-run-state.js'
 
 const temps: string[] = []
 

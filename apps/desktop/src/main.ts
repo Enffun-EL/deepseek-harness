@@ -14,15 +14,15 @@ import { fileURLToPath } from 'node:url'
 import {
   setupAutoUpdate,
   type AutoUpdateController,
-} from './auto-update.js'
+} from './update/auto-update.js'
 import {
   createElectronUpdateConsentDialogs,
   createUpdateConsentHandler,
-} from './update-consent.js'
-import { startHost, type RunningHost } from './host-supervisor.js'
-import { resolveHostLaunch, resolveNodeCommand } from './host-launcher.js'
-import { resolveHostRoot } from './resolve-host-root.js'
-import { HostLogRing } from './host-log-ring.js'
+} from './update/consent.js'
+import { startHost, type RunningHost } from './host/supervisor.js'
+import { resolveHostLaunch, resolveNodeCommand } from './host/launcher.js'
+import { resolveHostRoot } from './host/resolve-root.js'
+import { HostLogRing } from './host/log-ring.js'
 import {
   DEFAULT_HOST_RESTART_POLICY,
   recordRestartAttempt,
@@ -30,20 +30,20 @@ import {
   restartBackoffMs,
   shouldRestartHost,
   type HostRestartPolicy,
-} from './host-restart-policy.js'
-import { resolveHostReadyTimeoutMs } from './host-ready-timeout.js'
-import { registerShellBridgeHandlers } from './shell-bridge.js'
+} from './host/restart-policy.js'
+import { resolveHostReadyTimeoutMs } from './host/ready-timeout.js'
+import { registerShellBridgeHandlers } from './shell/bridge.js'
 import {
   isFirstLaunch,
   markFirstLaunchCompleted,
-} from './first-run-state.js'
+} from './shell/first-run-state.js'
 import {
   buildFirstRunWelcomeScript,
   buildShellPageDataUrl,
   describeHostLaunchError,
   FIRST_RUN_WELCOME_MAX_ATTEMPTS,
   SHELL_RETRY_URL,
-} from './shell-pages.js'
+} from './shell/pages.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

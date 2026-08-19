@@ -4,7 +4,7 @@ import {
   formatHostStartErrorDetail,
   isMissingNodeError,
   isMissingNodeMessage,
-} from '../src/missing-node.js'
+} from '../../src/host/missing-node.js'
 
 describe('isMissingNodeError', () => {
   it('detects spawn ENOENT for node', () => {

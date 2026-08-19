@@ -6,7 +6,7 @@ import {
   restartBackoffMs,
   shouldRestartHost,
   type HostRestartPolicy,
-} from '../src/host-restart-policy.js'
+} from '../../src/host/restart-policy.js'
 
 const tight: HostRestartPolicy = {
   maxAttempts: 3,

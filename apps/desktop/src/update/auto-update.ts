@@ -18,16 +18,16 @@ import type { AppUpdater, ProgressInfo, UpdateInfo } from 'electron-updater'
 import { describeUpdateFeed, resolveUpdateFeed, type UpdateFeedConfig } from './feed-url.js'
 
 const { autoUpdater } = electronUpdater
-import { shouldCheckForUpdatesOnStart } from './update-policy.js'
+import { shouldCheckForUpdatesOnStart } from './policy.js'
 import {
   canInstallUpdate,
   createInitialUpdateState,
   reduceUpdateState,
   type UpdateEvent,
   type UpdateState,
-} from './update-state.js'
+} from './state.js'
 
-export { shouldCheckForUpdatesOnStart } from './update-policy.js'
+export { shouldCheckForUpdatesOnStart } from './policy.js'
 
 /** Options for {@link setupAutoUpdate}. */
 export interface AutoUpdateSetupOptions {

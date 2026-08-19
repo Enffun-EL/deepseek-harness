@@ -79,7 +79,7 @@ Pure helpers (version compare, feed URL builder, update state machine, consent c
 
 ## First-run and shell status UX
 
-While the local Host starts, the main process shows a branded Chinese **loading** page (data URL). On Host **failure** or **readiness timeout**, it shows a matching error page with a **Retry** control that re-runs boot (stops any prior child, then starts Host again). Pages are built by pure helpers in `src/shell-pages.ts` (unit-tested; no `nodeIntegration`).
+While the local Host starts, the main process shows a branded Chinese **loading** page (data URL). On Host **failure** or **readiness timeout**, it shows a matching error page with a **Retry** control that re-runs boot (stops any prior child, then starts Host again). Pages are built by pure helpers in `src/shell/pages.ts` (unit-tested; no `nodeIntegration`).
 
 Missing system `node` (spawn `ENOENT` / not on `PATH`) is classified by `describeHostLaunchError` into branded Chinese product copy instead of an opaque stack, with the same Retry control.
 
@@ -154,23 +154,23 @@ When monorepo CLI artifacts are missing at pack time, `ensure-host-dist` still w
 | Path | Role |
 |---|---|
 | `src/main.ts` | Electron main: window, single-instance, quit → stop Host, auto-update + consent dialogs |
-| `src/auto-update.ts` | electron-updater wiring + consent-preserving controller |
-| `src/update-consent.ts` | Electron Yes/No dialog adapters for download / install |
-| `src/update-consent-handler.ts` | State → prompt orchestration (pure; testable) |
-| `src/update-consent-copy.ts` | Dialog title/message strings (pure) |
-| `src/feed-url.ts` | Feed URL / GitHub provider config (pure) |
-| `src/update-policy.ts` | When to check on start (pure) |
-| `src/update-state.ts` | Update lifecycle state machine (pure) |
-| `src/version-compare.ts` | Version ordering helper (pure) |
+| `src/update/auto-update.ts` | electron-updater wiring + consent-preserving controller |
+| `src/update/consent.ts` | Electron Yes/No dialog adapters for download / install |
+| `src/update/consent-handler.ts` | State → prompt orchestration (pure; testable) |
+| `src/update/consent-copy.ts` | Dialog title/message strings (pure) |
+| `src/update/feed-url.ts` | Feed URL / GitHub provider config (pure) |
+| `src/update/policy.ts` | When to check on start (pure) |
+| `src/update/state.ts` | Update lifecycle state machine (pure) |
+| `src/update/version-compare.ts` | Version ordering helper (pure) |
 
 | `src/main.ts` | Electron main: window, single-instance, quit → stop Host, first-run strip |
-| `src/shell-pages.ts` | Pure HTML builders for loading / timeout / failure pages |
-| `src/first-run-state.ts` | Read/write `hasCompletedFirstLaunch` under userData |
-| `src/host-supervisor.ts` | Spawn Host, parse readiness URL, stop child |
-| `src/host-launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
-| `src/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
-| `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
-| `src/resolve-host-root.ts` | Host root: env, packaged `resources/host`, monorepo walk |
+| `src/shell/pages.ts` | Pure HTML builders for loading / timeout / failure pages |
+| `src/shell/first-run-state.ts` | Read/write `hasCompletedFirstLaunch` under userData |
+| `src/host/supervisor.ts` | Spawn Host, parse readiness URL, stop child |
+| `src/host/launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
+| `src/host/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
+| `src/host/parse-url.ts` | Pure parser for `dsh web: http://…` |
+| `src/host/resolve-root.ts` | Host root: env, packaged `resources/host`, monorepo walk |
 | `electron-builder.yml` | Windows / macOS / Linux pack targets |
 | `scripts/ensure-host-dist.mjs` | Stage `host-dist/` (artifacts or placeholder) before electron-builder |
 | `scripts/stage-host-dist-lib.mjs` | Staging helpers + `run-host.mjs` template (unit-tested) |
@@ -214,21 +214,21 @@ Design rationale, alternatives, and acceptance criteria live in the [desktop Ele
 | Path | Role |
 |---|---|
 | `src/main.ts` | Electron main: window, single-instance, quit → stop Host, post-ready restart |
-| `src/host-supervisor.ts` | Spawn Host, parse readiness URL, stop child tree |
-| `src/host-restart-policy.ts` | Pure restart/backoff policy |
-| `src/host-log-ring.ts` | Bounded Host log ring for crash context |
-| `src/host-ready-timeout.ts` | `DSH_DESKTOP_HOST_READY_MS` resolution |
-| `src/host-launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
-| `src/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
-| `src/parse-host-url.ts` | Pure parser for `dsh web: http://…` |
+| `src/host/supervisor.ts` | Spawn Host, parse readiness URL, stop child tree |
+| `src/host/restart-policy.ts` | Pure restart/backoff policy |
+| `src/host/log-ring.ts` | Bounded Host log ring for crash context |
+| `src/host/ready-timeout.ts` | `DSH_DESKTOP_HOST_READY_MS` resolution |
+| `src/host/launcher.ts` | Resolve packaged `run-host.mjs` vs built vs source `dsh` launch argv |
+| `src/host/missing-node.ts` | Pure missing-Node detection + Chinese product copy |
+| `src/host/parse-url.ts` | Pure parser for `dsh web: http://…` |
 | `src/preload.ts` | Sandboxed preload exposing `window.dshDesktop` shell chrome API |
-| `src/ipc-channels.json` | Single source of IPC channel names; main imports ESM, preload bundle inlines for `sandbox: true` |
-| `src/shell-bridge.ts` | Main-process IPC handlers for the preload bridge |
-| `src/external-url.ts` | http(s) + optional host allowlist for `openExternal` |
-| `src/shell-pages.ts` | Branded loading/error HTML; first-run script; `describeHostLaunchError` |
-| `src/resolve-repo-root.ts` | Locate monorepo root from the packaged path |
-| `src/smoke-host.ts` | Headless Host readiness smoke (no Electron GUI) |
-| `src/smoke-electron.ts` | Electron binary presence/`--version` smoke (no window) |
+| `src/shell/ipc-channels.json` | Single source of IPC channel names; main imports ESM, preload bundle inlines for `sandbox: true` |
+| `src/shell/bridge.ts` | Main-process IPC handlers for the preload bridge |
+| `src/shell/external-url.ts` | http(s) + optional host allowlist for `openExternal` |
+| `src/shell/pages.ts` | Branded loading/error HTML; first-run script; `describeHostLaunchError` |
+| `src/host/resolve-root.ts` | Locate monorepo root from the packaged path |
+| `src/smoke/host.ts` | Headless Host readiness smoke (no Electron GUI) |
+| `scripts/smoke-electron.mjs` | Electron binary presence/`--version` smoke (no window) |
 
 | `scripts/smoke-electron.mjs` | Real Electron main-process startup smoke |
 
@@ -248,7 +248,7 @@ Or from this package:
 pnpm --filter @deepseek-ai/dsh-desktop run smoke:host
 ```
 
-The script builds this package, starts Host the same way Electron main does (`resolveRepoRoot` + `resolveHostLaunch` + `startHost`), waits for the `dsh web:` readiness URL, `GET`s that URL (expects HTTP 200), stops Host, and exits `0` on success or `1` on failure. A temporary `DSH_HOME` under the OS temp directory keeps smoke state off the developer CLI home.
+The script builds this package, starts Host the same way Electron main does (`resolveHostRoot` + `resolveHostLaunch` + `startHost`), waits for the `dsh web:` readiness URL, `GET`s that URL (expects HTTP 200), stops Host, and exits `0` on success or `1` on failure. A temporary `DSH_HOME` under the OS temp directory keeps smoke state off the developer CLI home.
 
 For a production-like Host (built CLI + web frontend), run `pnpm run build` at the repository root first. Without built artifacts the smoke falls back to the source CLI via `tsx` (same as desktop dev). CI gates use that source fallback so they do not require a full monorepo build.
 

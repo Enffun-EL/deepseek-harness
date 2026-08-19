@@ -14,13 +14,13 @@ import {
   IPC_GET_SHELL_INFO,
   IPC_OPEN_EXTERNAL,
   type DshDesktopShellInfo,
-} from './shell-ipc.js'
+} from './ipc.js'
 
 export {
   IPC_GET_SHELL_INFO,
   IPC_OPEN_EXTERNAL,
   type DshDesktopShellInfo,
-} from './shell-ipc.js'
+} from './ipc.js'
 
 /**
  * Register shell-bridge `ipcMain` handlers. Idempotent for the process lifetime

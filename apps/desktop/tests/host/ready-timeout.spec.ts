@@ -3,7 +3,7 @@ import {
   DEFAULT_HOST_READY_TIMEOUT_MS,
   HOST_READY_TIMEOUT_ENV,
   resolveHostReadyTimeoutMs,
-} from '../src/host-ready-timeout.js'
+} from '../../src/host/ready-timeout.js'
 
 describe('resolveHostReadyTimeoutMs', () => {
   it('returns the default when unset', () => {

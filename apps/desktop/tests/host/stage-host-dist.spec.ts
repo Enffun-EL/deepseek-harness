@@ -6,7 +6,7 @@ import {
   RUN_HOST_NAME,
   makeTempDir,
   stageHostDist,
-} from '../scripts/stage-host-dist-lib.mjs'
+} from '../../scripts/stage-host-dist-lib.mjs'
 
 const temps: string[] = []
 

@@ -4,7 +4,7 @@
  * @module @deepseek-ai/dsh-desktop/update-consent-handler
  */
 
-import type { UpdateState } from './update-state.js'
+import type { UpdateState } from './state.js'
 
 /** Actions the consent handler may invoke on the auto-update controller. */
 export interface UpdateConsentActions {

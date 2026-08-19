@@ -5,7 +5,7 @@ import {
   OPEN_EXTERNAL_HOSTS_ENV,
   parseOpenExternalHostAllowlist,
   resolveOpenExternalHostAllowlist,
-} from '../src/external-url.js'
+} from '../../src/shell/external-url.js'
 
 describe('isAllowedExternalUrl', () => {
   it('allows http and https absolute URLs to any host by default', () => {

@@ -1,13 +1,13 @@
 import { type ChildProcess, spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import process from 'node:process'
-import { parseHostWebUrl } from './parse-host-url.js'
-import type { HostLaunchSpec } from './host-launcher.js'
-import { HostLogRing } from './host-log-ring.js'
+import { parseHostWebUrl } from './parse-url.js'
+import type { HostLaunchSpec } from './launcher.js'
+import { HostLogRing } from './log-ring.js'
 import {
   DEFAULT_HOST_READY_TIMEOUT_MS,
   resolveHostReadyTimeoutMs,
-} from './host-ready-timeout.js'
+} from './ready-timeout.js'
 
 /** Options for supervising one Host child. */
 export interface HostSupervisorOptions {
