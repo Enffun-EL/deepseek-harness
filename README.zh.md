@@ -34,6 +34,16 @@ pnpm run build
 pnpm dsh web
 ```
 
+### 桌面端（Electron 壳）
+
+[DSH Desktop](apps/desktop/README.md) 是 Codex 风格的桌面入口：Electron 窗口监护本地 `dsh web`（MVP-A 回环），并复用同一套 Host 与 Web UI。在仓库检出中完成 `pnpm install` 后：
+
+```sh
+pnpm desktop
+```
+
+架构（MVP-A 与 MVP-B）、安全说明与设计 Agent Note 见 [桌面包 README](apps/desktop/README.md)。树内尚无独立安装包。
+
 ## 社区与支持
 
 - 欢迎通过 [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions) 提交反馈或 bug 报告。
