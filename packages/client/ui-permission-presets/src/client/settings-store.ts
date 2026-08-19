@@ -13,8 +13,6 @@ import {
 import {
   nodeAtPath, rehydrateSchema, type SchemaNode,
 } from '@deepseek-ai/dsh-client-schema-form'
-import { displayPermissionPreset } from './presentation.ts'
-
 /** Permission's settings namespace on the host wire. */
 export const PERMISSION_SETTINGS_NS = 'permission'
 
@@ -22,8 +20,11 @@ export const PERMISSION_SETTINGS_NS = 'permission'
 export interface PermissionDefaultOption {
   /** Preset key written to Settings. */
   id: string
-  /** Host-supplied label or a title-cased preset key. */
-  label: string
+  /**
+   * Host-supplied name used when the id is not a conventional product preset.
+   * Product labels for known presets are resolved at render time via locale.
+   */
+  name: string
 }
 
 /** Permission settings-row snapshot. */
@@ -64,9 +65,7 @@ export function permissionDefaultOf(view: SettingsNamespaceView): {
     const described = choice.meta?.description
     return [{
       id: choice.value,
-      label: typeof described === 'string' && described.length > 0
-        ? displayPermissionPreset(choice.value, described)
-        : displayPermissionPreset(choice.value, choice.value),
+      name: typeof described === 'string' && described.length > 0 ? described : choice.value,
     }]
   })
   if (options.length === 0 || !options.some(option => option.id === value)) {

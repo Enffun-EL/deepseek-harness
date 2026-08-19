@@ -31,7 +31,7 @@ import {
   accessEn, accessZh, en, zh,
 } from './locales.ts'
 import {
-  displayPermissionPreset, FULL_ACCESS_PRESET,
+  FULL_ACCESS_PRESET, translatePermissionPreset,
 } from './presentation.ts'
 import {
   PERMISSION_SETTINGS_NS, PermissionPresetSettingsController, refreshPermissionIfLoaded,
@@ -41,6 +41,17 @@ export type { PermissionRowInjected, PermissionRowProps } from './PermissionRow.
 export type {
   PermissionDefaultOption, PermissionSettingsState,
 } from './settings-store.ts'
+export {
+  displayPermissionPreset,
+  displayPresetName,
+  FULL_ACCESS_PRESET,
+  PERMISSION_PRESET_LABELS_EN,
+  PERMISSION_PRESET_LABELS_ZH,
+  permissionPresetLabelLocale,
+  permissionPresetProductLabel,
+  translatePermissionPreset,
+} from './presentation.ts'
+export type { PermissionPresetLabelLocale } from './presentation.ts'
 
 /** Required services (cordis fiber inject). */
 export const inject = ['commandUi', 'sessions', 'slots', 'locale', 'connection', 'remote']
@@ -58,7 +69,7 @@ function optionsOf(value: PermissionSelect, t: (key: string) => string): SelectO
     .filter(option => option.value !== 'custom')
     .map(option => ({
       id: option.value,
-      label: displayPermissionPreset(option.value, option.name),
+      label: translatePermissionPreset(option.value, option.name, t),
       ...(option.description !== undefined ? { detail: option.description } : {}),
       ...(option.value === value.currentValue ? { active: true } : {}),
       ...(option.value === FULL_ACCESS_PRESET
@@ -88,23 +99,11 @@ export function apply(ctx: ClientContext): void {
   /* jscpd:ignore-start */
   ctx.effect(() => {
     const disposers = [
-      ctx.locale.register(ACCESS_NS, 'zh', {
-        'confirm.title': accessZh['confirm.title'],
-        'confirm.description': accessZh['confirm.description'],
-        'confirm.acknowledge': accessZh['confirm.acknowledge'],
-        'confirm.cancel': accessZh['confirm.cancel'],
-        'confirm.enable': accessZh['confirm.enable'],
-      }),
-      ctx.locale.register(ACCESS_NS, 'en', {
-        'confirm.title': accessEn['confirm.title'],
-        'confirm.description': accessEn['confirm.description'],
-        'confirm.acknowledge': accessEn['confirm.acknowledge'],
-        'confirm.cancel': accessEn['confirm.cancel'],
-        'confirm.enable': accessEn['confirm.enable'],
-      }),
+      ctx.locale.register(ACCESS_NS, 'zh', accessZh),
+      ctx.locale.register(ACCESS_NS, 'en', accessEn),
     ]
     return () => { for (const dispose of disposers) dispose() }
-  }, 'ui-permission: Full access confirmation dictionaries')
+  }, 'ui-permission: access confirmation and preset label dictionaries')
   /* jscpd:ignore-end */
   const t = ctx.locale.bind(ACCESS_NS)
   const sessionFor = (session: ClientSessionContext): SessionFace | undefined =>
