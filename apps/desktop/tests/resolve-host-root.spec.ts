@@ -102,7 +102,7 @@ describe('resolveHostRoot', () => {
     mkdirSync(mainBin, { recursive: true })
     writeFileSync(path.join(mainBin, 'bin.js'), '// built\n')
 
-    // Simulate a git worktree nested under / beside main without built lib.
+    // Nested under main so the parent walk sees both (worktree-as-child layout).
     const worktree = path.join(main, 'desktop-worktrees', 'feature')
     mkdirSync(path.join(worktree, 'apps', 'cli', 'src'), { recursive: true })
     writeFileSync(path.join(worktree, 'pnpm-workspace.yaml'), 'packages: []\n')
@@ -115,7 +115,36 @@ describe('resolveHostRoot', () => {
       env: {},
       resourcesPath: null,
     })
-    expect(resolved).toBe(main)
+    expect(resolved).toBe(path.resolve(main))
+  })
+
+  it('discovers the primary checkout from a sibling linked git worktree via gitdir', () => {
+    const main = makeTemp()
+    writeFileSync(path.join(main, 'pnpm-workspace.yaml'), 'packages: []\n')
+    const mainBin = path.join(main, 'apps', 'cli', 'lib')
+    mkdirSync(mainBin, { recursive: true })
+    writeFileSync(path.join(mainBin, 'bin.js'), '// built\n')
+    mkdirSync(path.join(main, '.git', 'worktrees', 'feature'), { recursive: true })
+
+    // Sibling worktree (not nested under main) — parent walk alone cannot find main.
+    const parent = path.dirname(main)
+    const worktree = path.join(parent, `${path.basename(main)}-wt-feature`)
+    temps.push(worktree)
+    mkdirSync(path.join(worktree, 'apps', 'cli', 'src'), { recursive: true })
+    mkdirSync(path.join(worktree, 'apps', 'desktop', 'lib'), { recursive: true })
+    writeFileSync(path.join(worktree, 'pnpm-workspace.yaml'), 'packages: []\n')
+    writeFileSync(path.join(worktree, 'apps', 'cli', 'src', 'bin.ts'), '// source only\n')
+    writeFileSync(
+      path.join(worktree, '.git'),
+      `gitdir: ${path.join(main, '.git', 'worktrees', 'feature').replaceAll('\\', '/')}\n`,
+    )
+
+    const resolved = resolveHostRoot({
+      startDir: path.join(worktree, 'apps', 'desktop', 'lib'),
+      env: {},
+      resourcesPath: null,
+    })
+    expect(resolved).toBe(path.resolve(main))
   })
 
   it('throws a packaging-aware error when nothing matches', () => {

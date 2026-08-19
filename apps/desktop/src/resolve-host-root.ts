@@ -1,4 +1,5 @@
-import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -44,11 +45,9 @@ export function hasBuiltCliBin(dir: string): boolean {
  * Order:
  * 1. `DSH_DESKTOP_HOST_ROOT` when set and valid
  * 2. Packaged `resources/host` (`extraResources`) when `resourcesPath` is provided
- * 3. Walk parents for monorepo roots; prefer one with built `apps/cli/lib/bin.js`,
- *    then one that also has a root `node_modules` (real install), else the nearest marker
- *
- * Full Host bundling inside the installer is deferred; packaged builds either ship a
- * prepared `resources/host` tree or require `DSH_DESKTOP_HOST_ROOT` / a monorepo checkout.
+ * 3. Walk parents for monorepo roots, plus the primary git worktree (linked worktrees
+ *    are siblings, not parents). Prefer a root with built `apps/cli/lib/bin.js`, then
+ *    one with root `node_modules`, else the nearest marker.
  *
  * @param options - env, packaged resources path, and walk start
  * @returns absolute Host root path
@@ -76,14 +75,26 @@ export function resolveHostRoot(options: ResolveHostRootOptions = {}): string {
 
   const startDir = options.startDir ?? path.dirname(fileURLToPath(import.meta.url))
   const candidates: string[] = []
+  const seen = new Set<string>()
+  const addCandidate = (candidate: string): void => {
+    const normalized = path.resolve(candidate)
+    if (seen.has(normalized)) return
+    if (!isHostRoot(normalized) || !existsSync(path.join(normalized, 'pnpm-workspace.yaml'))) return
+    seen.add(normalized)
+    candidates.push(normalized)
+  }
+
   let dir = startDir
   for (;;) {
-    if (isHostRoot(dir) && existsSync(path.join(dir, 'pnpm-workspace.yaml'))) {
-      candidates.push(dir)
-    }
+    addCandidate(dir)
     const parent = path.dirname(dir)
     if (parent === dir) break
     dir = parent
+  }
+
+  // Linked git worktrees sit beside the main checkout, not under it.
+  for (const linked of discoverLinkedGitWorktreeRoots(startDir)) {
+    addCandidate(linked)
   }
 
   if (candidates.length === 0) {
@@ -98,12 +109,73 @@ export function resolveHostRoot(options: ResolveHostRootOptions = {}): string {
   const withNodeModules = candidates.find(candidate => existsSync(path.join(candidate, 'node_modules')))
   if (withNodeModules !== undefined) return withNodeModules
 
-  // Last resort: nearest monorepo markers (may still fail at launch if deps/lib missing).
   const fallback = candidates[0]
   if (fallback === undefined) {
     throw new Error('dsh-desktop: could not locate Host root after candidate scan.')
   }
   return fallback
+}
+
+/**
+ * Best-effort discovery of the primary git worktree root for a linked worktree.
+ * @param startDir - directory inside a checkout or worktree
+ * @returns absolute paths that may be Host roots (never throws)
+ */
+function discoverLinkedGitWorktreeRoots(startDir: string): string[] {
+  const found: string[] = []
+
+  try {
+    const commonDir = execFileSync('git', ['-C', startDir, 'rev-parse', '--git-common-dir'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 3_000,
+      windowsHide: true,
+    }).trim()
+    if (commonDir.length > 0) {
+      const resolvedCommon = path.resolve(startDir, commonDir)
+      // common-dir is typically <main>/.git
+      const mainRoot = path.basename(resolvedCommon) === '.git'
+        ? path.dirname(resolvedCommon)
+        : resolvedCommon
+      found.push(mainRoot)
+    }
+  } catch {
+    // Not a git directory, git missing, or timeout.
+  }
+
+  // Fallback: parse `.git` file `gitdir: .../worktrees/<name>` → main .git → parent.
+  try {
+    let probe = startDir
+    for (;;) {
+      const gitPath = path.join(probe, '.git')
+      if (existsSync(gitPath)) {
+        try {
+          const text = readFileSync(gitPath, 'utf8').trim()
+          const match = /^gitdir:\s*(.+)$/m.exec(text)
+          if (match?.[1] !== undefined) {
+            const gitDir = path.resolve(probe, match[1].trim())
+            // .../.git/worktrees/<wt> → .../.git → repo root
+            const maybeGit = path.dirname(path.dirname(gitDir))
+            if (path.basename(maybeGit) === '.git') {
+              found.push(path.dirname(maybeGit))
+            } else {
+              found.push(path.dirname(gitDir))
+            }
+          }
+        } catch {
+          // Directory .git or unreadable file — primary checkout already covered by walk.
+        }
+        break
+      }
+      const parent = path.dirname(probe)
+      if (parent === probe) break
+      probe = parent
+    }
+  } catch {
+    // ignore
+  }
+
+  return found
 }
 
 /**
