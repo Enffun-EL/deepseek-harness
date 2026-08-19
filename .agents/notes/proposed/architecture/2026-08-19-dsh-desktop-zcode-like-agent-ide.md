@@ -18,6 +18,23 @@ This note is the product and package map for that Agent IDE direction. It does n
 
 **DSH Desktop is a local Agent IDE whose unit of work is a task bound to a workspace, a permission mode, and a model** — not a chat wrapper around an opaque agent.
 
+### Borrow, do not clone (hard design rule)
+
+Peer products (Zcode and similar) are an **information-architecture and workflow lens**, not a visual or branding template.
+
+| Borrow | Do not copy |
+| --- | --- |
+| Primary objects: task × workspace × permission × model | Zcode logo, wordmark, purple/glow marketing chrome |
+| Left-rail roles (new task, search, automation, plugins, project/task lists) | Pixel-identical spacing, radii, icon sets, empty-state illustration language |
+| Home empty-state job (greet → pick project → compose with mode+model → starters) | Exact Chinese marketing lines, time-of-day catchphrases, card copy |
+| Permission mode *meanings* (ask / auto-edit / plan / full-access) | Peer-specific control chrome or trademarked mode names as product identity |
+| Settings depth and command-palette *jobs* | Layout clones of every settings row order “because Zcode did” |
+| Remote workspace *entry kinds* (local / SSH / WSL / Docker) as product intent | Proprietary remote UX pixels or bot-channel skins |
+
+**Visual system stays DSH:** existing `ui-theme`, typography, density, and DeepSeek product voice. New surfaces should feel like a coherent DSH desktop, not a reskin. When a mock or PR is “pixel parity with Zcode,” reject it; when it is “same job-to-be-done, DSH materials,” accept.
+
+Implementers may read peer screenshots for **structure only**. Do not unpack or copy proprietary app bundles, assets, or CSS from installed peer products into this repo.
+
 ### Relationship to MVP-A shell
 
 | Layer | Owns | Does not own |

@@ -12,7 +12,7 @@ Execution plan for the Zcode-like Agent IDE work on `feature/desktop-integration
 | [Agent IDE IA note](../../../.agents/notes/proposed/architecture/2026-08-19-dsh-desktop-zcode-like-agent-ide.md) | Product one-liner, layer ownership, MVP cuts |
 | [Left rail structure note](../../../.agents/notes/implemented/architecture/2026-08-20-desktop-left-rail-structure.md) | `ui-sidebar` `Config.desktopRail` decision |
 
-Peer product “Zcode” is an **IA lens only**. Implementation stays Host + `packages/client/*` + Electron supervisor — never a second SPA inside `apps/desktop`.
+Peer product “Zcode” is an **IA and workflow lens only** — not a visual/brand clone. Implementation stays Host + `packages/client/*` + Electron supervisor — never a second SPA inside `apps/desktop`, and never a reskin of peer pixels/CSS/assets. Full rule: [Agent IDE IA note — Borrow, do not clone](../../../.agents/notes/proposed/architecture/2026-08-19-dsh-desktop-zcode-like-agent-ide.md#borrow-do-not-clone-hard-design-rule).
 
 ---
 
@@ -20,7 +20,7 @@ Peer product “Zcode” is an **IA lens only**. Implementation stays Host + `pa
 
 ### Goal
 
-Ship a **local Agent IDE home in ~30 seconds** on Desktop: left rail that navigates, home empty state that starts work, open-folder via existing directory pickers, visible permission mode, and an offline-capable Host that still boots under the Electron supervisor.
+Ship a **local Agent IDE home in ~30 seconds** on Desktop: left rail that navigates, home empty state that starts work, open-folder via existing directory pickers, visible permission mode, and an offline-capable Host that still boots under the Electron supervisor. **Look and voice stay DSH** (`ui-theme`, product copy); structure may rhyme with peer IA.
 
 ### Non-goals (P0)
 
@@ -35,8 +35,9 @@ Contract `outOfScopeP0` plus:
 - Advanced automation builder beyond template shells
 - Full settings app shell (P0 is flyout / existing modal sections)
 - Air-gapped enterprise policy packs
-- Pixel-perfect marketing parity outside the home shell
+- **Pixel / skin parity** with Zcode or any peer (icons, glow, marketing chrome, trademarked copy)
 - Forking `ui-conversation` into a desktop-only chat stack
+- Unpacking peer installers (`app.asar`, etc.) for assets or CSS
 
 ---
 

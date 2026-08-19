@@ -1,7 +1,12 @@
 {
   "version": 1,
   "title": "Zcode home interaction contract",
-  "purpose": "Implementer-facing contract for Zcode home shell chrome, empty states, composer entry points, and P0 scope. Labels are user-facing copy anchors; IDs are stable for wiring.",
+  "purpose": "Implementer-facing contract for Zcode home shell chrome, empty states, composer entry points, and P0 scope. Labels are user-facing copy anchors; IDs are stable for wiring. Peer product is an IA/workflow lens only — DSH owns visual system and brand voice.",
+  "designRule": {
+    "borrow": "information architecture, primary objects, and workflow jobs from peer Agent IDEs",
+    "doNotCopy": "visual skin, brand assets, trademarked marketing copy, pixel layout, or proprietary bundles",
+    "visualSystem": "DSH ui-theme and DeepSeek product voice"
+  },
   "routes": [
     {
       "id": "home",
